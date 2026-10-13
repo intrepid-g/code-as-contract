@@ -1,0 +1,476 @@
+<title>Code as Contract vs. Gherkin</title>
+<style>
+  :root {
+    --paper: #F6F7F4;
+    --paper-raised: #FFFFFF;
+    --ink: #1B222C;
+    --ink-soft: #46505C;
+    --neutral: #5B6672;
+    --rule: #D6D9D2;
+    --seal: #93312E;
+    --seal-soft: #F3E4E2;
+    --bronze: #8A6B33;
+    --bronze-soft: #F0E9DA;
+    --code-bg: #202834;
+    --code-ink: #DDE3EA;
+    --code-comment: #7C8794;
+    --code-accent: #E4B36A;
+    --code-green: #9CC79B;
+    --good: #2E6B45;
+    --good-soft: #E2EEE5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141922;
+      --paper-raised: #1C232E;
+      --ink: #E7E4DC;
+      --ink-soft: #B4B0A6;
+      --neutral: #8B93A0;
+      --rule: #2E3745;
+      --seal: #C96A62;
+      --seal-soft: #33231F;
+      --bronze: #C09A55;
+      --bronze-soft: #2C2517;
+      --code-bg: #10151D;
+      --code-ink: #D5DBE3;
+      --good: #7DBE93;
+      --good-soft: #1B2A20;
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #F6F7F4; --paper-raised: #FFFFFF; --ink: #1B222C; --ink-soft: #46505C;
+    --neutral: #5B6672; --rule: #D6D9D2; --seal: #93312E; --seal-soft: #F3E4E2;
+    --bronze: #8A6B33; --bronze-soft: #F0E9DA; --code-bg: #202834; --code-ink: #DDE3EA;
+    --good: #2E6B45; --good-soft: #E2EEE5;
+  }
+  :root[data-theme="dark"] {
+    --paper: #141922; --paper-raised: #1C232E; --ink: #E7E4DC; --ink-soft: #B4B0A6;
+    --neutral: #8B93A0; --rule: #2E3745; --seal: #C96A62; --seal-soft: #33231F;
+    --bronze: #C09A55; --bronze-soft: #2C2517; --code-bg: #10151D; --code-ink: #D5DBE3;
+    --good: #7DBE93; --good-soft: #1B2A20;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Charter, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  main { max-width: 46rem; margin: 0 auto; padding: 3.5rem 1.25rem 6rem; }
+  code, pre, .clause-no, .tab, .eyebrow, .verdict {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+
+  .eyebrow {
+    font-size: .72rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--bronze); margin: 0 0 .75rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.12; font-weight: 600;
+    margin: 0 0 1rem; text-wrap: balance;
+  }
+  h1 em { font-style: italic; color: var(--seal); }
+  .lede { font-size: 1.15rem; color: var(--ink-soft); max-width: 38rem; margin: 0 0 .4rem; }
+
+  section { margin-top: 4rem; }
+  .clause-head { display: flex; align-items: baseline; gap: .9rem; border-top: 2px solid var(--ink); padding-top: 1rem; }
+  .clause-no { color: var(--seal); font-size: .85rem; letter-spacing: .05em; }
+  h2 { font-size: 1.45rem; font-weight: 600; margin: 0; text-wrap: balance; }
+  h3 { font-size: 1.05rem; margin: 1.8rem 0 .5rem; }
+  p { max-width: 40rem; }
+  .aside { color: var(--neutral); font-size: .95rem; }
+  strong { font-weight: 600; }
+  a { color: var(--seal); }
+
+  /* comparison table */
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--bronze); font-weight: 600; }
+  td:first-child { color: var(--ink-soft); white-space: nowrap; }
+  .win { color: var(--good); font-weight: 600; }
+  .lose { color: var(--seal); }
+
+  /* the comparator */
+  .comparator { background: var(--paper-raised); border: 1px solid var(--rule); border-radius: 6px; margin-top: 1.5rem; }
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+  .tab {
+    appearance: none; background: none; border: none; cursor: pointer;
+    padding: .8rem 1.1rem; font-size: .78rem; letter-spacing: .06em;
+    color: var(--neutral); border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tab[aria-selected="true"] { color: var(--seal); border-bottom-color: var(--seal); font-weight: 700; }
+  .tab:focus-visible, .check:focus-visible, .theme-note a:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
+  .pane { display: none; }
+  .pane.active { display: block; }
+  .pane-note { padding: 1rem 1.25rem 0; font-size: .95rem; color: var(--ink-soft); }
+  pre {
+    margin: 1rem 0 0; padding: 1.25rem; overflow-x: auto;
+    background: var(--code-bg); color: var(--code-ink);
+    font-size: .82rem; line-height: 1.55; border-radius: 0 0 6px 6px;
+  }
+  .c { color: var(--code-comment); font-style: italic; }
+  .k { color: var(--code-accent); }
+  .s { color: var(--code-green); }
+
+  /* dispute test */
+  .check {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--paper-raised); border: 1px solid var(--rule); border-radius: 6px;
+    padding: 1rem 1.15rem; margin-top: .75rem; color: var(--ink);
+    font: inherit; font-size: .98rem;
+  }
+  .check .q { font-weight: 600; }
+  .check .a { display: none; margin-top: .6rem; color: var(--ink-soft); font-size: .93rem; }
+  .check[aria-expanded="true"] { border-color: var(--seal); }
+  .check[aria-expanded="true"] .a { display: block; }
+  .check .hint { color: var(--seal); font-size: .8rem; margin-left: .4rem; }
+
+  .verdict {
+    margin-top: 2rem; padding: 1.1rem 1.25rem; border-left: 3px solid var(--seal);
+    background: var(--seal-soft); font-size: .85rem; line-height: 1.7;
+  }
+
+  ol.rules { padding-left: 1.2rem; }
+  ol.rules li { margin: .8rem 0; max-width: 38rem; }
+  ol.rules li::marker { color: var(--seal); font-weight: 700; }
+
+  .badge {
+    display: inline-block; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
+    background: var(--bronze-soft); color: var(--bronze); padding: .15rem .55rem; border-radius: 3px;
+    font-family: ui-monospace, monospace;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .pane.active { animation: fade .18s ease; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  }
+</style>
+
+<main>
+  <p class="eyebrow">A working paper · drafted for the author of the concept</p>
+  <h1>Code as Contract does not need Gherkin.<br>It needs <em>case law</em>.</h1>
+  <p class="lede">Gherkin promises “specifications a stakeholder can read” and delivers a second
+  language, a glue layer, and a spec that can silently drift from the code. Code as Contract already
+  contains a stronger answer: the specification <strong>is</strong> the top-level clause, and the
+  scenarios are typed tests named as claims — <strong>case-law tests</strong>. This paper compares the
+  two and hardens the idea into a convention.</p>
+
+  <section>
+    <div class="clause-head"><span class="clause-no">§1</span><h2>The recital — what Code as Contract holds</h2></div>
+    <p>From the manifesto (<code>CODE_AS_A_CONTRACT.md</code>): code is a contract between many parties
+    that a machine happens to execute. Definitions are declared before use; every business rule has a
+    name; the operative clause reads top-to-bottom with near-zero cyclomatic complexity; terms are
+    pure and execution lives at the edges; <strong>tests are case law</strong>; the principle applies
+    recursively without abuse; changes are amendments. Three principles complete the seed so that
+    entire programs — not just decision functions — can be drafted this way: execution follows the
+    succession of events (gather → consult → perform); <strong>operational demands are
+    schedules</strong> — caching, queuing, forms declared as frozen data and executed by rule-free
+    performers; and the docket is generated, never hand-written. Schedules are worked through with
+    examples in the companion paper, <a href="https://claude.ai/code/artifact/1cd42a36-f35b-4fc3-a170-d898daaad495">Schedules — the internals</a>.</p>
+    <p class="aside">Principle 5 is the load-bearing one for this paper. If tests are case law, then a
+    separate “readable specification layer” is a second, competing contract — and two contracts over
+    the same subject matter is how disputes start.</p>
+  </section>
+
+  <section>
+    <div class="clause-head"><span class="clause-no">§2</span><h2>Exhibit A — the same scenario, three drafts</h2></div>
+    <p>One rule from the refund contract: <em>goods damaged on arrival refund in full, and the merchant
+    bears the cost.</em> Flip between the drafts.</p>
+
+    <div class="comparator">
+      <div class="tabs" role="tablist" aria-label="Drafts of the same scenario">
+        <button class="tab" role="tab" id="tab-gherkin" aria-selected="true" aria-controls="pane-gherkin">Gherkin + glue</button>
+        <button class="tab" role="tab" id="tab-caselaw" aria-selected="false" aria-controls="pane-caselaw">Case-law test (proposed)</button>
+        <button class="tab" role="tab" id="tab-clause" aria-selected="false" aria-controls="pane-clause">The clause it pins</button>
+      </div>
+
+      <div class="pane active" id="pane-gherkin" role="tabpanel" aria-labelledby="tab-gherkin">
+        <p class="pane-note"><span class="lose">Two artifacts, one meaning.</span> The .feature file is prose that
+        cannot execute; the step definitions are regex glue that must be kept honest by hand. Neither
+        is the contract — the real terms live in a third place.</p>
+<pre><span class="c"># refunds.feature — cannot execute, can drift</span>
+<span class="k">Feature:</span> Refunds
+  <span class="k">Scenario:</span> Damaged goods refund in full
+    <span class="k">Given</span> a settled order of $100.00 delivered on 2026-07-01
+    <span class="k">And</span> the goods were damaged on arrival
+    <span class="k">When</span> the customer requests a refund on 2026-07-05
+    <span class="k">Then</span> the refund is approved for $100.00
+    <span class="k">And</span> the merchant bears the cost
+
+<span class="c"># steps/refund_steps.py — the glue layer nobody reads aloud</span>
+<span class="k">@given</span>(<span class="s">r"a settled order of \$(\d+)\.(\d+) delivered on (.+)"</span>)
+<span class="k">def</span> step_order(context, dollars, cents, delivered): ...
+<span class="k">@given</span>(<span class="s">r"the goods were damaged on arrival"</span>)
+<span class="k">def</span> step_damaged(context): ...
+<span class="k">@when</span>(<span class="s">r"the customer requests a refund on (.+)"</span>)
+<span class="k">def</span> step_request(context, on): ...
+<span class="k">@then</span>(<span class="s">r"the refund is approved for \$(\d+)\.(\d+)"</span>)
+<span class="k">def</span> step_approved(context, dollars, cents): ...</pre>
+      </div>
+
+      <div class="pane" id="pane-caselaw" role="tabpanel" aria-labelledby="tab-caselaw">
+        <p class="pane-note"><span class="win">One artifact.</span> The test name is the claim, the body cites the
+        Definitions by their real types, and the ruling is asserted against the operative clause. A
+        stakeholder can read it aloud; the type checker and the test runner both enforce it.</p>
+<pre><span class="c"># case_law/test_clause_4_refunds.py</span>
+<span class="k">def</span> test_customer_may_return_damaged_goods_for_a_full_refund():
+    <span class="c"># Facts — the Definitions, cited by type, not by regex</span>
+    order = Order(total_cents=<span class="s">10_000</span>, settled=<span class="k">True</span>,
+                  delivered_on=date(<span class="s">2026, 7, 1</span>), damaged_on_arrival=<span class="k">True</span>)
+
+    <span class="c"># Claim — settled by the operative clause, nothing lower</span>
+    decision = settle_refund_request(
+        RefundRequest(requested_on=date(<span class="s">2026, 7, 5</span>)), order, RefundPolicy())
+
+    <span class="c"># Ruling</span>
+    <span class="k">assert</span> decision.approved
+    <span class="k">assert</span> decision.amount_cents == <span class="s">10_000</span>
+    <span class="k">assert</span> decision.paid_by <span class="k">is</span> Party.MERCHANT</pre>
+      </div>
+
+      <div class="pane" id="pane-clause" role="tabpanel" aria-labelledby="tab-clause">
+        <p class="pane-note">What both drafts try to specify. Note the contract already reads like the
+        Gherkin — because the operative clause has no cyclomatic complexity to hide behind. That is why
+        the prose layer is redundant.</p>
+<pre><span class="k">def</span> settle_refund_request(request, order, policy) -> RefundDecision:
+    <span class="s">"""Clause 4 — Refunds. Pure: facts in, decision out."""</span>
+    <span class="k">if not</span> order_is_refundable(order):
+        <span class="k">return</span> RefundDecision(approved=<span class="k">False</span>, reason=DenialReason.ORDER_NOT_SETTLED)
+    <span class="k">if not</span> refund_window_is_open(request, order, policy):
+        <span class="k">return</span> RefundDecision(approved=<span class="k">False</span>, reason=DenialReason.WINDOW_CLOSED)
+    <span class="k">return</span> RefundDecision(approved=<span class="k">True</span>,
+                          amount_cents=refundable_amount(order, policy),
+                          paid_by=liable_party(order))</pre>
+      </div>
+    </div>
+    <h3>Exhibit B — the full cycle, endpoint to performance</h3>
+    <p>Gherkin stops at the scenario; a contract must also govern <em>execution</em>. This exhibit runs
+    the whole interaction in the CaC discipline: the endpoint is the <strong>performer</strong> — it
+    gathers facts, consults the terms, performs the decision, and never re-interprets a single term.
+    Flip through the three layers.</p>
+
+    <div class="comparator">
+      <div class="tabs" role="tablist" aria-label="Layers of the full cycle">
+        <button class="tab" role="tab" id="tab-endpoint" aria-selected="true" aria-controls="pane-endpoint">1 · The performer (endpoint)</button>
+        <button class="tab" role="tab" id="tab-gather" aria-selected="false" aria-controls="pane-gather">2 · Gathering the facts</button>
+        <button class="tab" role="tab" id="tab-perform" aria-selected="false" aria-controls="pane-perform">3 · Performing the decision</button>
+      </div>
+
+      <div class="pane active" id="pane-endpoint" role="tabpanel" aria-labelledby="tab-endpoint">
+        <p class="pane-note"><span class="win">Zero cyclomatic complexity.</span> The endpoint reads like the
+        succession-of-events section of a contract: gather, consult, perform. It contains no business
+        rule — not even <code>if decision.approved</code>; whether an approval pays out is itself a term
+        of performance, so it lives in step 3.</p>
+<pre><span class="c"># app/refunds/endpoint.py — the performer. Impure, and proud of it;</span>
+<span class="c"># it holds no terms, only the succession of events.</span>
+<span class="k">@app.post</span>(<span class="s">"/orders/{order_id}/refund-requests"</span>)
+<span class="k">def</span> handle_refund_request(order_id: OrderId, body: RefundRequestBody) -> RefundOutcomeBody:
+    facts = gather_refund_facts(order_id, body)          <span class="c"># step 1 — impure reads</span>
+    decision = settle_refund_request(                    <span class="c"># step 2 — pure terms (Clause 4)</span>
+        facts.request, facts.order, facts.policy)
+    receipt = perform_refund_decision(order_id, decision) <span class="c"># step 3 — impure writes</span>
+    <span class="k">return</span> RefundOutcomeBody.from_decision(decision, receipt)</pre>
+      </div>
+
+      <div class="pane" id="pane-gather" role="tabpanel" aria-labelledby="tab-gather">
+        <p class="pane-note">Fact-gathering is itself contractual: it returns a <strong>named, frozen
+        bundle of Definitions</strong> — the evidence file. Translation from the outside world (HTTP
+        body, DB row) into the contract's types happens here and only here, so the terms never see a
+        raw dict or an ORM object.</p>
+<pre><span class="c"># app/refunds/facts.py — evidence gathering. Impure reads, no rulings.</span>
+<span class="k">@dataclass</span>(frozen=<span class="k">True</span>)
+<span class="k">class</span> RefundFacts:
+    <span class="s">"""The evidence file: every Definition Clause 4 will cite."""</span>
+    request: RefundRequest
+    order: Order
+    policy: RefundPolicy
+
+
+<span class="k">def</span> gather_refund_facts(order_id: OrderId, body: RefundRequestBody) -> RefundFacts:
+    <span class="s">"""Translate the outside world into the contract's Definitions.
+    Reads only; makes no decision, applies no rule."""</span>
+    <span class="k">return</span> RefundFacts(
+        request=body.as_refund_request(),      <span class="c"># HTTP → Definitions</span>
+        order=orders_repo.load(order_id),      <span class="c"># DB row → Order</span>
+        policy=policies_repo.current(),        <span class="c"># config → RefundPolicy</span>
+    )</pre>
+      </div>
+
+      <div class="pane" id="pane-perform" role="tabpanel" aria-labelledby="tab-perform">
+        <p class="pane-note">Performance mirrors the decision it executes. Each arm cites the decision's
+        own fields — it never reaches back into <code>Order</code> to re-derive anything the terms
+        already settled. If performance needed more information, that is a defect in the
+        <code>RefundDecision</code> Definition, not a license to re-interpret.</p>
+<pre><span class="c"># app/refunds/perform.py — performance of the contract. Impure writes,</span>
+<span class="c"># executed exactly as decided; the decision is never second-guessed.</span>
+<span class="k">def</span> perform_refund_decision(order_id: OrderId, decision: RefundDecision) -> Receipt:
+    <span class="s">"""Execute Clause 4's decision at the boundary."""</span>
+    <span class="k">if</span> decision.approved:
+        receipt = payments.credit(order_id, decision.amount_cents,
+                                  from_=decision.paid_by)
+    <span class="k">else</span>:
+        receipt = Receipt.nothing_owed(reason=decision.reason)
+    notifications.send_refund_outcome(order_id, decision)
+    audit_log.record(order_id, decision, receipt)
+    <span class="k">return</span> receipt</pre>
+      </div>
+    </div>
+
+    <p class="aside">What the case law covers, per layer: Clause 4 gets the full docket (§4).
+    <code>gather_refund_facts</code> and <code>perform_refund_decision</code> get thin execution-layer
+    tests — mocks are permitted <em>there</em>, per rule 5, because those layers exist to touch the
+    world. The endpoint itself needs at most one wiring test: with three lines and no branches, there
+    is almost nothing left to get wrong.</p>
+  </section>
+
+  <section>
+    <div class="clause-head"><span class="clause-no">§3</span><h2>The comparison, term by term</h2></div>
+    <div class="scroll"><table>
+      <thead><tr><th>Term</th><th>Gherkin / Cucumber</th><th>Case-law tests</th></tr></thead>
+      <tbody>
+        <tr><td>Artifacts per rule</td><td class="lose">Three: .feature, step glue, real code</td><td class="win">One: the test, against the clause</td></tr>
+        <tr><td>Can it drift from behavior?</td><td class="lose">Yes — prose and regex bind loosely</td><td class="win">No — it fails the build if it lies</td></tr>
+        <tr><td>Type safety</td><td class="lose">None; steps parse strings</td><td class="win">Full; facts are the Definitions</td></tr>
+        <tr><td>Who maintains it</td><td class="lose">In practice, developers anyway¹</td><td class="win">Developers, honestly</td></tr>
+        <tr><td>Refactoring</td><td class="lose">Regex glue breaks silently</td><td class="win">Rename tooling just works</td></tr>
+        <tr><td>Stakeholder readability</td><td>High — prose</td><td>High, <em>if the naming discipline holds</em> — that is what §4 enforces</td></tr>
+        <tr><td>Where ambiguity goes</td><td class="lose">Hides in the glue layer</td><td class="win">Nowhere to hide; the clause is cited directly</td></tr>
+      </tbody>
+    </table></div>
+    <p class="aside">¹ The known failure mode of Cucumber-style BDD: business people rarely write or
+    read the .feature files, so teams pay the tax of the DSL without collecting its one benefit. Even
+    BDD's originators stress the conversation matters, not the tool. Case-law tests keep the
+    conversation (the test name <em>is</em> the agreed claim) and drop the tool.</p>
+  </section>
+
+  <section>
+    <div class="clause-head"><span class="clause-no">§4</span><h2>The proposed convention — Case-Law Testing <span class="badge">CaC/CL-1</span></h2></div>
+    <p>This is the hardening you asked for: principle 5 of the manifesto, drafted as enforceable
+    convention rather than sentiment. Seven rules, each mechanically checkable.</p>
+    <ol class="rules">
+      <li><strong>One file per clause.</strong> <code>case_law/test_clause_4_refunds.py</code> pins
+      Clause 4 and nothing else. The docket mirrors the contract's table of contents.</li>
+      <li><strong>The test name is a claim a party could bring,</strong> written as a full sentence in
+      snake_case: <code>test_customer_may_return_damaged_goods_for_a_full_refund</code>. If it can't be
+      read aloud in a meeting, it fails review. (Lintable: name length ≥ 6 words, contains a party
+      noun.)</li>
+      <li><strong>Facts / Claim / Ruling structure,</strong> in that order, comment-marked. This is
+      Given/When/Then without the DSL: facts are constructed from the Definitions, the claim is one
+      call to the operative clause, the ruling is plain asserts.</li>
+      <li><strong>Sue at the highest court.</strong> Case law calls only top-level clauses, never the
+      internals (<code>refundable_amount</code> et al.). Internals stay redraftable as long as rulings
+      stand. (Lintable: an import allowlist per case-law file.)</li>
+      <li><strong>No mocks in case law.</strong> A mock in a case-law test is proof the terms are not
+      pure — fix the contract, not the test. Mocks are permitted only in the thin execution-layer
+      tests at the boundary.</li>
+      <li><strong>Precedent is append-mostly.</strong> Amending a clause may change a ruling, and the
+      diff must show both together: the clause edit and the case-law edit in one commit. Deleting a
+      case without amending a clause is overruling without authority — blocked in review.</li>
+      <li><strong>The docket is the stakeholder document.</strong> Generate the human-readable spec
+      <em>from</em> the case law (test names, grouped by clause file), never the other way around.
+      One command, e.g. <code>pytest --collect-only -q case_law/</code>, prints the contract's current
+      case law as prose. Gherkin's one genuine benefit, recovered at zero drift.</li>
+    </ol>
+    <p class="aside">Rules 1, 2, 4 and 5 are enforceable today with a ~40-line flake8/ruff plugin or a
+    conftest collection hook; rule 6 is a CI diff check. That is what makes this a convention and not
+    a vibe.</p>
+  </section>
+
+  <section>
+    <div class="clause-head"><span class="clause-no">§5</span><h2>Schedules and Articles — the rest of the program</h2></div>
+    <p>Clauses and case law cover the business rules; two more instruments cover everything else.
+    A <strong>schedule</strong> (principle 9) drafts one operational concern as frozen data, a pure
+    ruling, and a generic performer. The membership test: <em>can the obligation be stated as data,
+    and its judgment as a pure function?</em> The catalog:</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Schedule</th><th>The terms declare</th><th>The pure ruling</th></tr></thead>
+      <tbody>
+        <tr><td>C · Caching</td><td>key, TTL, grace</td><td>is this evidence still admissible?</td></tr>
+        <tr><td>D · Deferred performance</td><td>queue, attempts owed, backoff, deadline</td><td>retry, escalate, or give up?</td></tr>
+        <tr><td>F · Forms &amp; screens</td><td>fields, rules, actions, payload mapping</td><td>which grievances stand?</td></tr>
+        <tr><td>P · Permissions</td><td>which party may invoke which clause</td><td>allowed, or denied with reason?</td></tr>
+        <tr><td>R · Rate limits</td><td>window, quota, scope</td><td>is the quota exhausted?</td></tr>
+        <tr><td>G · Feature gates</td><td>audience, conditions, sunset date</td><td>is the gate open for this party, now?</td></tr>
+        <tr><td>I · Idempotency</td><td>key, replay window, on-replay behavior</td><td>serve the prior receipt, or reject?</td></tr>
+        <tr><td>T · Retention &amp; privacy</td><td>what data, kept how long, then what</td><td>keep, anonymize, or purge?</td></tr>
+        <tr><td>S · Recurring performance</td><td>cadence, grace, missed-run policy</td><td>is it due? what does a miss owe?</td></tr>
+        <tr><td>O · Observability</td><td>events that must be recorded; thresholds</td><td>is a threshold breached?</td></tr>
+        <tr><td>L · Copy &amp; locale</td><td>every user-facing sentence, keyed</td><td>pure lookup; a missing key fails the build</td></tr>
+        <tr><td>M · Records</td><td>how each Definition persists: table, columns, indexes</td><td>does the stored form drift from the declared terms?</td></tr>
+      </tbody>
+    </table></div>
+    <p>Above the schedules sit the <strong>Articles</strong> — architecture as governing law:
+    layering and who may import whom, deployable boundaries and what crosses them, one owner per
+    fact of state. Articles are declared as data like any schedule, their violations are found by a
+    pure ruling over the import graph (ordinary case law, run in CI), and they are amended only
+    through a recorded ADR that names the case law it changes. Both are worked with full code in the
+    companion paper, <a href="https://claude.ai/code/artifact/1cd42a36-f35b-4fc3-a170-d898daaad495">Schedules — the internals</a>.</p>
+  </section>
+
+  <section>
+    <div class="clause-head"><span class="clause-no">§6</span><h2>The dispute test, made interactive</h2></div>
+    <p>The manifesto's four questions, extended with two for case law. Click each to see the standard
+    it applies.</p>
+    <button class="check" aria-expanded="false"><span class="q">Could each party point to the clause that binds them?</span><span class="hint">show standard</span>
+      <span class="a">“When do we charge the restocking fee?” must resolve to one named function —
+      <code>refundable_amount</code> — not an archaeology dig through branches.</span></button>
+    <button class="check" aria-expanded="false"><span class="q">Could a judge rule from the document alone?</span><span class="hint">show standard</span>
+      <span class="a">If deciding what the code should do requires running it against production state,
+      terms and execution are entangled. Pure terms mean the judge needs only the facts.</span></button>
+    <button class="check" aria-expanded="false"><span class="q">Would an amendment be legible?</span><span class="hint">show standard</span>
+      <span class="a">Waiving the restocking fee for damaged goods should touch one clause and its case
+      law. Ten files touched means the contract was drafted badly.</span></button>
+    <button class="check" aria-expanded="false"><span class="q">Is a clause hiding?</span><span class="hint">show standard</span>
+      <span class="a">An inline condition nobody can name is a term nobody agreed to. Name it or
+      strike it.</span></button>
+    <button class="check" aria-expanded="false"><span class="q">New — does every claim have standing?</span><span class="hint">show standard</span>
+      <span class="a">A case-law test must assert something a real party would dispute. A test no party
+      would ever cite is not precedent — it is coverage theater. Delete it or promote it.</span></button>
+    <button class="check" aria-expanded="false"><span class="q">New — could the docket brief a stakeholder?</span><span class="hint">show standard</span>
+      <span class="a">Run the docket command. If the printed test names, read as sentences, would not
+      survive a product meeting, the naming discipline has lapsed — the exact failure Gherkin was
+      invented to prevent, prevented without Gherkin.</span></button>
+
+    <div class="verdict"><strong>HOLDING</strong> — Gherkin externalizes the specification into prose and pays for
+    it with a glue layer and drift. Code as Contract internalizes it: the operative clause is the
+    readable spec, the case law is the executable scenarios, and the docket is the generated
+    stakeholder view. Adopt convention CaC/CL-1; do not adopt Gherkin.</div>
+  </section>
+
+  <section>
+    <div class="clause-head"><span class="clause-no">§7</span><h2>Adoption order</h2></div>
+    <ol class="rules">
+      <li>Move existing pure tests into <code>case_law/</code>, one file per clause; rename to claim
+      sentences.</li>
+      <li>Add the Facts / Claim / Ruling comments; delete any mock from a case-law file by purifying
+      the term it was covering.</li>
+      <li>Ship the lint plugin for rules 1–5 and the CI diff check for rule 6.</li>
+      <li>Wire the docket command into CI output so every build prints the current case law — that
+      artifact replaces any .feature file you would have written.</li>
+      <li>Extract schedules as you touch them: each scattered TTL, retry decorator, permission
+      check or hand-built form becomes a declared term with a pure ruling (§5). Declare the
+      Articles last, once the layers are visible — then let CI enforce them.</li>
+    </ol>
+  </section>
+</main>
+
+<script>
+  document.querySelectorAll('.comparator').forEach(comp => {
+    comp.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        comp.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
+        comp.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+        tab.setAttribute('aria-selected', 'true');
+        comp.querySelector('#' + tab.getAttribute('aria-controls')).classList.add('active');
+      });
+    });
+  });
+  document.querySelectorAll('.check').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.setAttribute('aria-expanded', btn.getAttribute('aria-expanded') === 'false' ? 'true' : 'false');
+    });
+  });
+</script>
