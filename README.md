@@ -13,7 +13,8 @@ them, then case law that settles disputes.
 |------|------------|
 | [`skill/SKILL.md`](skill/SKILL.md) | The skill itself: when to use it and how to draft a prose `CONTRACT.md` plus matching code. |
 | [`skill/EXAMPLE.md`](skill/EXAMPLE.md) | A worked example: a refund policy in Python. |
-| [`manifesto/`](manifesto) | The principles behind the idea: [`CODE_AS_A_CONTRACT.md`](manifesto/CODE_AS_A_CONTRACT.md), plus HTML versions ([`index.html`](manifesto/index.html), [`internals.html`](manifesto/internals.html)). |
+| [`manifesto/manifesto.md`](manifesto/manifesto.md) | The principles behind the idea. |
+| [`manifesto/papers/`](manifesto/papers) | Companion papers (HTML): [`schedules.html`](manifesto/papers/schedules.html) and [`vs-gherkin.html`](manifesto/papers/vs-gherkin.html). |
 
 ## Versions
 
@@ -23,7 +24,7 @@ To read or restore an older version:
 
 ```sh
 git tag -l 'manifesto-v*'
-git show manifesto-v0.1.0:manifesto/CODE_AS_A_CONTRACT.md
+git show manifesto-v0.1.0:manifesto/CODE_AS_A_CONTRACT.md   # path at 0.1.0; later: manifesto/manifesto.md
 git checkout manifesto-v0.1.0 -- manifesto/   # restore into your working tree
 ```
 
@@ -36,7 +37,7 @@ The skill lives in [`skill/`](skill). Clone the repo, then copy or symlink that
 folder into your skills directory under the name `code-as-contract`:
 
 ```sh
-git clone <this-repo-url>
+git clone https://github.com/intrepid-g/code-as-contract.git
 cd code-as-contract
 
 # personal (all projects)

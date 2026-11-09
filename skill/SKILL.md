@@ -133,9 +133,9 @@ by claim, and amended without litigation.
 This skill is the working summary. The complete text ships alongside it in
 `manifesto/`:
 
-- `manifesto/index.html` — the manifesto.
-- `manifesto/internals.html` — the case law (worked disputes and rulings).
-- `manifesto/CODE_AS_A_CONTRACT.md` — the same text in Markdown.
+- `manifesto/manifesto.md` — the manifesto: principles, schedules, articles, case law.
+- `manifesto/papers/schedules.html` — companion paper: schedules and the internals, worked through.
+- `manifesto/papers/vs-gherkin.html` — companion paper: why case law replaces a Gherkin layer.
 
-Read the case law when a clause is contested and the summary above does not
-settle it.
+Read the manifesto (its case-law convention and worked disputes) when a clause
+is contested and the summary above does not settle it.
