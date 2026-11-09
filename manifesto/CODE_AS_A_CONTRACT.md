@@ -1,5 +1,7 @@
 # Code as a Contract — a manifesto
 
+*Version 0.1.0 — see [CHANGELOG](../CHANGELOG.md). Earlier versions: `git checkout manifesto-v0.1.0`.*
+
 Code is not instructions to a machine that humans happen to read.
 Code is a **contract between many parties** — the customer, the business,
 the payment processor, the next developer, the on-call engineer at 3am —

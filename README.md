@@ -15,6 +15,21 @@ them, then case law that settles disputes.
 | [`skill/EXAMPLE.md`](skill/EXAMPLE.md) | A worked example: a refund policy in Python. |
 | [`manifesto/`](manifesto) | The principles behind the idea: [`CODE_AS_A_CONTRACT.md`](manifesto/CODE_AS_A_CONTRACT.md), plus HTML versions ([`index.html`](manifesto/index.html), [`internals.html`](manifesto/internals.html)). |
 
+## Versions
+
+The manifesto is versioned with [semantic-ish](https://semver.org) tags named
+`manifesto-vX.Y.Z`; every change is listed in [`CHANGELOG.md`](CHANGELOG.md).
+To read or restore an older version:
+
+```sh
+git tag -l 'manifesto-v*'
+git show manifesto-v0.1.0:manifesto/CODE_AS_A_CONTRACT.md
+git checkout manifesto-v0.1.0 -- manifesto/   # restore into your working tree
+```
+
+Bump the version line in the manifesto, add a changelog entry, and tag in the
+same commit whenever the manifesto's meaning changes (not for typo fixes).
+
 ## Install
 
 The skill lives in [`skill/`](skill). Clone the repo, then copy or symlink that
