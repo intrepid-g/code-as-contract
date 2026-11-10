@@ -1,6 +1,6 @@
 # Code as a Contract — a manifesto
 
-*Version 0.1.0 — see [CHANGELOG](../CHANGELOG.md). Other versions: see the `manifesto-v*` tags (README).*
+*Version 0.2.0 — see [CHANGELOG](../CHANGELOG.md). Other versions: see the `manifesto-v*` tags (README).*
 
 Code is not instructions to a machine that humans happen to read.
 Code is a **contract between many parties** — the customer, the business,
@@ -8,16 +8,20 @@ the payment processor, the next developer, the on-call engineer at 3am —
 that a machine happens to execute.
 
 Read any well-drafted legal contract and you find the same structure good
-code wants: **definitions** first, then **sections** stating each party's
+code wants: the **parties** first, then **sections** stating each party's
 obligations, responsibilities and abilities, the **business rules** and how
-they are applied, and the **succession of events** — what must happen, in
-what order, and who has to do it.
+they are applied, the **succession of events** — what must happen, in
+what order, and who has to do it — and the **case law** that settles
+disputes. Definitions exist to serve those clauses, not to open the document.
 
 We hold these principles:
 
-1. **Definitions come first, and are declared, not implied.** Types are the
-   contract's Definitions section. A party, an amount, a deadline each gets
-   a name and a shape before any clause uses it.
+1. **Parties come first.** Before any type or function, list every party —
+   people, and internal system actors too (the database, queue, cache,
+   scheduler, an LLM) — with its duties and what it may rely on from the
+   others. Each party is bound by at least one clause. Definitions (types)
+   serve the clauses: declare one when a clause needs to name a party, an
+   amount or a deadline, never as an opening ceremony.
 2. **Every business rule has a name.** A rule that exists only as an inline
    `if` is an unwritten verbal agreement — unenforceable and disputed later.
 3. **The operative clause reads top-to-bottom.** The main function of an
@@ -30,6 +34,7 @@ We hold these principles:
    decision. You can judge the terms without a courtroom.
 5. **Tests are case law.** Each pure unit test is a scenario a party could
    dispute, named as a claim, settled by the contract at the highest level.
+   When prose and case law disagree, the case law wins.
 6. **The principle applies recursively — without abuse.** Implementations of
    the named functions follow the same discipline, but splitting stops when
    a function's body is plainer than another name would be. A contract
@@ -103,7 +108,7 @@ rationale (the ADR, kept in the repo as the Article's amendment record).
 
 ## The contract, in Python
 
-**Definitions.** Parties and terms, declared before use — nothing implied:
+**Definitions.** The parties and terms the clauses need to name:
 
 ```python
 from dataclasses import dataclass
