@@ -11,7 +11,7 @@ them, then case law that settles disputes.
 
 | Path | What it is |
 |------|------------|
-| [`skill/SKILL.md`](skill/SKILL.md) | The skill itself: when to use it and how to draft a prose `CONTRACT.md` plus matching code. |
+| [`skill/SKILL.md`](skill/SKILL.md) | The skill itself: when to use it and how to draft the code as the single source, with `CONTRACT.md` generated from it. |
 | [`skill/EXAMPLE.md`](skill/EXAMPLE.md) | A worked example: a refund policy in Python. |
 | [`pattern/pattern.md`](pattern/pattern.md) | The principles behind the idea. |
 | [`pattern/papers/`](pattern/papers) | Companion papers (HTML): [`schedules.html`](pattern/papers/schedules.html) and [`vs-gherkin.html`](pattern/papers/vs-gherkin.html). |

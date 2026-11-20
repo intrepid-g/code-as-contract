@@ -1,6 +1,6 @@
 # Code as a Contract — a pattern
 
-*Version 0.2.1 — see [CHANGELOG](../CHANGELOG.md). Other versions: see the `pattern-v*` tags (README; tags before 0.2.1 are `manifesto-v*`).*
+*Version 0.3.0 — see [CHANGELOG](../CHANGELOG.md). Other versions: see the `pattern-v*` tags (README; tags before 0.2.1 are `manifesto-v*`).*
 
 Code is not instructions to a machine that humans happen to read.
 Code is a **contract between many parties** — the customer, the business,
@@ -58,11 +58,15 @@ We hold these principles:
    fact still fresh, should this delivery retry, is this field valid — is
    a pure function of the schedule and the facts, and gets case law like
    any other term.
-10. **The docket is generated, never hand-written.** The human-readable
-    specification is produced *from* the case law (test names, grouped by
-    clause), so it can never drift from behavior. Prose spec layers that
-    do not execute are a second contract over the same subject matter —
-    and two contracts is how disputes start.
+10. **The docket is generated, never hand-written.** The prose contract
+    and the code are two renderings of one source. The code is the
+    source: its clauses, their docstrings and the case law (test names,
+    grouped by clause). The prose is generated from it, so it can never
+    drift from behavior. Prose that arrives first (for example from a
+    business person) is translated into code, then regenerated from the
+    code. It is not kept beside the code. Prose spec layers that do not
+    execute are a second contract over the same subject matter — and two
+    contracts is how disputes start.
 
 ---
 

@@ -11,31 +11,42 @@ execute. Draft it the way a careful lawyer drafts a contract: parties
 first, then clauses stating what binds each of them, then case law that
 settles disputes.
 
-## Two outputs, not one
+## One source, two renderings
 
-Drafting produces **both** a prose contract and code — neither stands alone:
+Code and prose contract are two renderings of one source. Keep only one
+source. **The code is the source.** The prose is generated from it.
 
-- **`CONTRACT.md`** — the actual legal document. Prose, organized as
-  **Articles per party** (Article I — Customer, Article II — System, ...),
-  each with numbered obligations in plain language a non-engineer party
-  could read and know what they're on the hook for. Follow with **Articles
-  per procedure** narrating the happy path end-to-end (e.g. "Article IV —
-  Escalation Procedure"), citing back to the per-party obligations by
-  number. This is the document a stakeholder points to in a dispute — it
-  must exist even if the code is "self-documenting," because a party
-  reading a function signature is not the same as a party reading terms
-  they agreed to.
-- **The code** — dataclasses/enums for Definitions, named functions for
-  clauses, tests for case law. Every clause-bearing function's docstring
-  cites the `CONTRACT.md` article/clause it implements (e.g. "Clause 2.1 —
-  see Article II §1"), so the two documents can be read side by side and an
-  amendment to one is checkable against the other.
+The source has three parts:
 
-If asked to draft "the contract" with no output specified, produce both.
-If asked only for code, still name clauses after what `CONTRACT.md` would
-call them — the prose document can be generated later without renaming
-anything. See [EXAMPLE.md](EXAMPLE.md) for a `CONTRACT.md` excerpt paired
-with its code.
+- **Clauses.** Each clause is a named function. Its docstring cites its
+  article and clause (e.g. "Clause 2.1 — Article II §1") and states the
+  clause text in plain language a non-engineer party can read.
+- **Parties.** The party list, with the duties of each party.
+- **Case law.** Test names, written as claims a party could dispute.
+
+**`CONTRACT.md` is generated, never hand-edited.** It has Articles per
+party (Article I — Customer, Article II — System, ...) and Articles per
+procedure (e.g. "Article IV — Escalation Procedure"). No generator tool
+exists yet. Render it from what exists:
+
+- Clause docstrings give the clause text.
+- `pytest --collect-only -q` over the case law, grouped by clause, gives
+  the docket.
+
+Start the file with this line: "Generated from code; edit the code, not
+this file." To change the contract, change the code and generate the file
+again. Never edit `CONTRACT.md` and the code in parallel. Two contracts is
+how disputes start.
+
+**Prose given as input.** A business person can give you a prose contract.
+Translate it into code: parties, clauses, docstrings, case law. Then
+regenerate the prose from the code. Do not keep the original prose beside
+the code as a second source.
+
+If asked only for code, still cite article and clause in each docstring.
+If asked for "the contract", render `CONTRACT.md` from the code. See
+[EXAMPLE.md](EXAMPLE.md) for a generated `CONTRACT.md` excerpt with its
+code.
 
 ## The clauses
 

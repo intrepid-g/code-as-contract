@@ -170,10 +170,14 @@ send a warning before breach, log every escalation for audit. Those are
 **obligation clauses**: `party, action, deadline/trigger → performed`,
 where failing to perform is a breach of that clause, not a missing feature.
 
-Drafting this domain produces two documents: the prose `CONTRACT.md` below,
-and the code that follows it — clause numbers match across both.
+The code that follows is the source. The `CONTRACT.md` below is generated
+from it — clause numbers match because they come from the code.
 
-## `CONTRACT.md` (excerpt)
+## `CONTRACT.md` (excerpt, generated)
+
+> *Generated from code; edit the code, not this file.*
+> Article and clause text come from the clause docstrings. The docket (the
+> list of disputes each clause settles) comes from the test names.
 
 > ### Article I — The Agent
 > §1. The Agent owes the Customer a first response within the response
@@ -197,7 +201,7 @@ and the code that follows it — clause numbers match across both.
 > its escalation duty (Article II §2). Every escalation is logged for
 > audit — the log entry is the System's proof of performance.
 
-**Parties.** Already set by the `CONTRACT.md` articles above — Customer,
+**Parties.** Already set by the generated articles above — Customer,
 Agent, System — and the System is a party, not infrastructure. The audit
 log is the System's proof of performance, so its duty (record every
 escalation) is a clause too.
