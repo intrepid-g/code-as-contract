@@ -34,21 +34,36 @@ same commit whenever the pattern's meaning changes (not for typo fixes).
 
 ## Install
 
-The skill lives in [`skill/`](skill). Clone the repo, then copy or symlink that
-folder into your skills directory under the name `code-as-contract`:
+Each skill is a directory named `code-as-contract/` that holds `SKILL.md` and
+`EXAMPLE.md`. The skills directory you put it in depends on the tool:
+
+| Tool | Personal (all projects) | Per project |
+|------|-------------------------|-------------|
+| Claude Code | `~/.claude/skills/` | `.claude/skills/` |
+| OpenCode | `~/.config/opencode/skills/` (also reads `~/.claude/skills/`) | `.opencode/skills/` (also reads `.claude/skills/`) |
+
+Without cloning, using the GitHub CLI:
+
+```sh
+# Claude Code (personal). OpenCode reads this location too.
+mkdir -p ~/.claude/skills/code-as-contract
+gh api repos/intrepid-g/code-as-contract/tarball \
+  | tar xz --strip-components=2 -C ~/.claude/skills/code-as-contract --wildcards '*/skill/*'
+```
+
+Or clone the repo and symlink the folder, so `git pull` keeps the skill up to date:
 
 ```sh
 git clone https://github.com/intrepid-g/code-as-contract.git
 cd code-as-contract
-
-# personal (all projects)
-ln -s "$PWD/skill" ~/.claude/skills/code-as-contract
-
-# or per project
-ln -s "$PWD/skill" /path/to/project/.claude/skills/code-as-contract
+ln -s "$PWD/skill" ~/.claude/skills/code-as-contract                 # personal
+ln -s "$PWD/skill" /path/to/project/.claude/skills/code-as-contract  # or per project
 ```
 
-Claude Code picks it up automatically.
+Claude Code and OpenCode discover the skill on their own. For OpenCode, there
+is also a variant with OpenCode frontmatter at
+[`opencode-commands/code-as-contract`](https://github.com/gabriels1234/aitoolkit/tree/main/opencode-commands/code-as-contract)
+in aitoolkit.
 
 ## When it triggers
 
