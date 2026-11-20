@@ -1,7 +1,5 @@
 # Code as a Contract — a pattern
 
-*Version 0.3.0 — see [CHANGELOG](../CHANGELOG.md). Other versions: see the `pattern-v*` tags (README; tags before 0.2.1 are `manifesto-v*`).*
-
 Code is not instructions to a machine that humans happen to read.
 Code is a **contract between many parties** — the customer, the business,
 the payment processor, the next developer, the on-call engineer at 3am —

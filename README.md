@@ -28,7 +28,7 @@ git show manifesto-v0.1.0:manifesto/CODE_AS_A_CONTRACT.md   # old tags: paths ar
 git checkout manifesto-v0.1.0 -- manifesto/   # restore into your working tree
 ```
 
-Bump the version line in the pattern, add a changelog entry, and tag in the
+Bump `pattern/VERSION`, add a changelog entry, and tag in the
 same commit whenever the pattern's meaning changes (not for typo fixes).
 
 ## Install
