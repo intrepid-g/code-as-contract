@@ -128,14 +128,14 @@ dispute is not a clause — inline it.
 Code that passes both tests can be reviewed clause by clause, tested claim
 by claim, and amended without litigation.
 
-## The full manifesto
+## The full pattern
 
 This skill is the working summary. The complete text ships alongside it in
-`manifesto/`:
+`pattern/`:
 
-- `manifesto/manifesto.md` — the manifesto: principles, schedules, articles, case law.
-- `manifesto/papers/schedules.html` — companion paper: schedules and the internals, worked through.
-- `manifesto/papers/vs-gherkin.html` — companion paper: why case law replaces a Gherkin layer.
+- `pattern/pattern.md` — the pattern: principles, schedules, articles, case law.
+- `pattern/papers/schedules.html` — companion paper: schedules and the internals, worked through.
+- `pattern/papers/vs-gherkin.html` — companion paper: why case law replaces a Gherkin layer.
 
-Read the manifesto (its case-law convention and worked disputes) when a clause
+Read the pattern (its case-law convention and worked disputes) when a clause
 is contested and the summary above does not settle it.

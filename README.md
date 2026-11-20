@@ -13,23 +13,23 @@ them, then case law that settles disputes.
 |------|------------|
 | [`skill/SKILL.md`](skill/SKILL.md) | The skill itself: when to use it and how to draft a prose `CONTRACT.md` plus matching code. |
 | [`skill/EXAMPLE.md`](skill/EXAMPLE.md) | A worked example: a refund policy in Python. |
-| [`manifesto/manifesto.md`](manifesto/manifesto.md) | The principles behind the idea. |
-| [`manifesto/papers/`](manifesto/papers) | Companion papers (HTML): [`schedules.html`](manifesto/papers/schedules.html) and [`vs-gherkin.html`](manifesto/papers/vs-gherkin.html). |
+| [`pattern/pattern.md`](pattern/pattern.md) | The principles behind the idea. |
+| [`pattern/papers/`](pattern/papers) | Companion papers (HTML): [`schedules.html`](pattern/papers/schedules.html) and [`vs-gherkin.html`](pattern/papers/vs-gherkin.html). |
 
 ## Versions
 
-The manifesto is versioned with [semantic-ish](https://semver.org) tags named
-`manifesto-vX.Y.Z`; every change is listed in [`CHANGELOG.md`](CHANGELOG.md).
+The pattern is versioned with [semantic-ish](https://semver.org) tags named
+`pattern-vX.Y.Z` (tags before 0.2.1 are named `manifesto-v*` and their paths are under `manifesto/`); every change is listed in [`CHANGELOG.md`](CHANGELOG.md).
 To read or restore an older version:
 
 ```sh
-git tag -l 'manifesto-v*'
-git show manifesto-v0.1.0:manifesto/CODE_AS_A_CONTRACT.md   # path at 0.1.0; later: manifesto/manifesto.md
+git tag -l 'pattern-v*' 'manifesto-v*'
+git show manifesto-v0.1.0:manifesto/CODE_AS_A_CONTRACT.md   # old tags: paths are under manifesto/
 git checkout manifesto-v0.1.0 -- manifesto/   # restore into your working tree
 ```
 
-Bump the version line in the manifesto, add a changelog entry, and tag in the
-same commit whenever the manifesto's meaning changes (not for typo fixes).
+Bump the version line in the pattern, add a changelog entry, and tag in the
+same commit whenever the pattern's meaning changes (not for typo fixes).
 
 ## Install
 

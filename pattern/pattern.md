@@ -1,6 +1,6 @@
-# Code as a Contract — a manifesto
+# Code as a Contract — a pattern
 
-*Version 0.2.0 — see [CHANGELOG](../CHANGELOG.md). Other versions: see the `manifesto-v*` tags (README).*
+*Version 0.2.1 — see [CHANGELOG](../CHANGELOG.md). Other versions: see the `pattern-v*` tags (README; tags before 0.2.1 are `manifesto-v*`).*
 
 Code is not instructions to a machine that humans happen to read.
 Code is a **contract between many parties** — the customer, the business,
@@ -257,7 +257,7 @@ def handle_refund_endpoint(order_id: str, request: RefundRequest) -> None:
 
 ## The dispute test
 
-When you cannot decide whether code honors this manifesto, ask the
+When you cannot decide whether code honors this pattern, ask the
 contract questions:
 
 - *Could each party point to the clause that binds them?* If a stakeholder
