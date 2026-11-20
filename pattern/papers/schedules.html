@@ -121,7 +121,7 @@
   with one move, borrowed from legal drafting: the <strong>schedule</strong> — an annex of declared
   terms that the clauses cite. The schedule is frozen data; the machinery that executes it is a
   <strong>generic performer with no rules of its own</strong>; and every judgment the schedule
-  requires is a pure function with case law. Three worked examples follow.</p>
+  requires is a pure function with precedents (in legal terms: case law). Three worked examples follow.</p>
 
   <section>
     <div class="clause-head"><span class="clause-no">§1</span><h2>The pattern, stated once</h2></div>
@@ -133,10 +133,10 @@
       lives next to the Definitions and is cited by name.</li>
       <li><strong>Rulings</strong> — every judgment the terms require (is this still fresh? should
       this retry? is this field valid?) is a pure function of the terms and the facts. This is where
-      the case law attaches.</li>
+      the precedents attach.</li>
       <li><strong>A generic performer</strong> — one piece of machinery per concern (a cache wrapper,
       a queue dispatcher, a form renderer) that reads the terms and consults the rulings. It is
-      written once, contains zero business decisions, and never needs case law of its own — only
+      written once, contains zero business decisions, and never needs precedents of its own — only
       execution-layer tests.</li>
     </ol>
     <p class="aside">The test for whether you have done it right: <em>could you change the obligation
@@ -154,7 +154,7 @@
     <div class="comparator">
       <div class="tabs" role="tablist" aria-label="Caching schedule layers">
         <button class="tab" role="tab" id="tc1" aria-selected="true" aria-controls="pc1">Terms</button>
-        <button class="tab" role="tab" id="tc2" aria-selected="false" aria-controls="pc2">Rulings + case law</button>
+        <button class="tab" role="tab" id="tc2" aria-selected="false" aria-controls="pc2">Rulings + precedents</button>
         <button class="tab" role="tab" id="tc3" aria-selected="false" aria-controls="pc3">Generic performer</button>
       </div>
 
@@ -183,7 +183,7 @@ EXCHANGE_RATE = CacheTerms(
       <div class="pane" id="pc2" role="tabpanel" aria-labelledby="tc2">
         <p class="pane-note"><span class="win">This is the part Gherkin-era codebases never test:</span> the
         freshness judgment itself. Because it is a pure function of timestamps and terms, it gets
-        ordinary case law — no clock mocking, no cache server in the test.</p>
+        ordinary precedents — no clock mocking, no cache server in the test.</p>
 <pre><span class="c"># schedules/caching.py — the ruling. Pure: facts in, admissibility out.</span>
 <span class="k">class</span> Admissibility(Enum):
     FRESH = <span class="s">"fresh"</span>          <span class="c"># serve it</span>
@@ -201,7 +201,7 @@ EXCHANGE_RATE = CacheTerms(
     <span class="k">return</span> Admissibility.EXPIRED
 
 
-<span class="c"># case_law/test_schedule_c_caching.py</span>
+<span class="c"># precedents/test_schedule_c_caching.py</span>
 <span class="k">def</span> test_a_rate_older_than_its_ttl_but_in_grace_is_served_while_refetching():
     fetched = datetime(<span class="s">2026, 8, 6, 12, 0</span>)
     now = datetime(<span class="s">2026, 8, 6, 12, 16</span>)   <span class="c"># 16 min: past TTL, inside grace</span>
@@ -247,7 +247,7 @@ EXCHANGE_RATE = CacheTerms(
     <div class="comparator">
       <div class="tabs" role="tablist" aria-label="Async schedule layers">
         <button class="tab" role="tab" id="td1" aria-selected="true" aria-controls="pd1">Terms</button>
-        <button class="tab" role="tab" id="td2" aria-selected="false" aria-controls="pd2">Rulings + case law</button>
+        <button class="tab" role="tab" id="td2" aria-selected="false" aria-controls="pd2">Rulings + precedents</button>
         <button class="tab" role="tab" id="td3" aria-selected="false" aria-controls="pd3">Generic performer</button>
       </div>
 
@@ -278,7 +278,7 @@ REFUND_OUTCOME_NOTICE = DeliveryTerms(
       <div class="pane" id="pd2" role="tabpanel" aria-labelledby="td2">
         <p class="pane-note">The retry decision is where async bugs live, and it is almost never
         tested — because it is usually buried in framework config. Here it is a pure ruling with
-        case law. The names of the outcomes are Definitions, so the performer cannot improvise.</p>
+        precedents. The names of the outcomes are Definitions, so the performer cannot improvise.</p>
 <pre><span class="c"># schedules/delivery.py — the ruling. Pure: history in, next step out.</span>
 <span class="k">@dataclass</span>(frozen=<span class="k">True</span>)
 <span class="k">class</span> Retry:      at: datetime
@@ -298,7 +298,7 @@ REFUND_OUTCOME_NOTICE = DeliveryTerms(
     <span class="k">return</span> Retry(at=now + terms.backoff_base * <span class="s">2</span> ** (attempt_no - <span class="s">1</span>))
 
 
-<span class="c"># case_law/test_schedule_d_delivery.py</span>
+<span class="c"># precedents/test_schedule_d_delivery.py</span>
 <span class="k">def</span> test_a_breached_deadline_escalates_even_with_attempts_remaining():
     first = datetime(<span class="s">2026, 8, 6, 12, 0</span>)
     now = datetime(<span class="s">2026, 8, 6, 13, 1</span>)     <span class="c"># 61 min, attempt 2 of 5</span>
@@ -342,7 +342,7 @@ REFUND_OUTCOME_NOTICE = DeliveryTerms(
     <div class="comparator">
       <div class="tabs" role="tablist" aria-label="Frontend schedule layers">
         <button class="tab" role="tab" id="tf1" aria-selected="true" aria-controls="pf1">Terms</button>
-        <button class="tab" role="tab" id="tf2" aria-selected="false" aria-controls="pf2">Rulings + case law</button>
+        <button class="tab" role="tab" id="tf2" aria-selected="false" aria-controls="pf2">Rulings + precedents</button>
         <button class="tab" role="tab" id="tf3" aria-selected="false" aria-controls="pf3">Generic performer</button>
       </div>
 
@@ -352,7 +352,7 @@ REFUND_OUTCOME_NOTICE = DeliveryTerms(
         payload mapping is explicit, so the endpoint's contract is cited, not assumed.</p>
 <pre><span class="c">// schedules/refundRequestForm.ts — Schedule F-1. The offer, declared.</span>
 <span class="k">export const</span> refundRequestForm = {
-  clause: <span class="s">"4"</span>,                              <span class="c">// the clause this form tenders facts to</span>
+  clause: <span class="s">"refund_procedure"</span>,                <span class="c">// the module this form tenders facts to</span>
   fields: [
     { name: <span class="s">"requestedOn"</span>, label: <span class="s">"Date of request"</span>,
       kind: <span class="s">"date"</span>, required: <span class="k">true</span>,
@@ -377,7 +377,7 @@ REFUND_OUTCOME_NOTICE = DeliveryTerms(
 
       <div class="pane" id="pf2" role="tabpanel" aria-labelledby="tf2">
         <p class="pane-note">Frontend validation rules are named, pure, and separately testable —
-        exactly like backend clauses. A rule returns a grievance or nothing. Case law runs in vitest
+        exactly like backend clauses. A rule returns a grievance or nothing. Precedents run in vitest
         with no DOM, no render, no user-event simulation.</p>
 <pre><span class="c">// schedules/rules.ts — named rulings. Pure: value in, grievance out.</span>
 <span class="k">export function</span> requestedOnMayNotBeInTheFuture(
@@ -389,13 +389,13 @@ REFUND_OUTCOME_NOTICE = DeliveryTerms(
 }
 
 
-<span class="c">// case_law/refundRequestForm.test.ts</span>
+<span class="c">// precedents/refundRequestForm.test.ts</span>
 test(<span class="s">"a customer may not date a refund request in the future"</span>, () =&gt; {
   <span class="k">const</span> grievance = requestedOnMayNotBeInTheFuture(<span class="s">"2026-08-07"</span>, <span class="s">"2026-08-06"</span>);
   expect(grievance?.says).toMatch(<span class="s">/cannot be in the future/</span>);
 });
 
-test(<span class="s">"the form tenders exactly what Clause 4's endpoint is owed"</span>, () =&gt; {
+test(<span class="s">"the form tenders exactly what the refund endpoint is owed"</span>, () =&gt; {
   <span class="k">const</span> body = refundRequestForm.actions[<span class="s">0</span>].call.payload({
     requestedOn: <span class="s">"2026-08-05"</span>, reason: <span class="s">"damaged_on_arrival"</span> });
   expect(body).toEqual({ requested_on: <span class="s">"2026-08-05"</span>,
@@ -461,7 +461,7 @@ test(<span class="s">"the form tenders exactly what Clause 4's endpoint is owed"
     </table></div>
 
     <p style="margin-top:2rem">Each of the remaining schedules, worked to the same three parts —
-    terms, ruling, case law. Open any of them:</p>
+    terms, ruling, precedents. Open any of them:</p>
 
     <details class="sched"><summary>P · Permissions — <code>who is party to the clause</code></summary>
       <p class="pane-note">Authorization is a statement about <em>standing</em>: which roles are party
@@ -472,15 +472,15 @@ test(<span class="s">"the form tenders exactly what Clause 4's endpoint is owed"
     clause: str
     parties: frozenset[Role]
 
-REQUEST_REFUND = InvocationTerms(clause=<span class="s">"4"</span>,
+REQUEST_REFUND = InvocationTerms(clause=<span class="s">"refund_procedure"</span>,
                                  parties=frozenset({Role.CUSTOMER, Role.SUPPORT}))
 
 <span class="k">def</span> may_invoke(actor: Actor, terms: InvocationTerms) -> Allowed | Denied:
     <span class="k">if</span> actor.role <span class="k">in</span> terms.parties:
         <span class="k">return</span> Allowed()
-    <span class="k">return</span> Denied(reason=<span class="s">f"{actor.role.value} is not party to clause {terms.clause}"</span>)
+    <span class="k">return</span> Denied(reason=<span class="s">f"{actor.role.value} is not party to {terms.clause}"</span>)
 
-<span class="c"># case_law/test_schedule_p_permissions.py</span>
+<span class="c"># precedents/test_schedule_p_permissions.py</span>
 <span class="k">def</span> test_a_courier_has_no_standing_to_request_a_refund():
     ruling = may_invoke(Actor(role=Role.COURIER), REQUEST_REFUND)
     <span class="k">assert</span> isinstance(ruling, Denied)</pre>
@@ -502,7 +502,7 @@ REFUND_REQUESTS = QuotaTerms(scope=<span class="s">"per_customer"</span>,
 <span class="k">def</span> over_quota(history: list[datetime], now: datetime, terms: QuotaTerms) -> bool:
     <span class="k">return</span> sum(<span class="s">1</span> <span class="k">for</span> t <span class="k">in</span> history <span class="k">if</span> now - t &lt; terms.window) &gt;= terms.invocations_owed
 
-<span class="c"># case_law/test_schedule_r_quotas.py</span>
+<span class="c"># precedents/test_schedule_r_quotas.py</span>
 <span class="k">def</span> test_the_fourth_refund_request_in_a_day_is_refused():
     noon = datetime(<span class="s">2026, 8, 6, 12</span>)
     history = [noon - timedelta(hours=h) <span class="k">for</span> h <span class="k">in</span> (<span class="s">1, 2, 3</span>)]
@@ -525,7 +525,7 @@ INSTANT_REFUNDS = GateTerms(<span class="s">"instant_refunds"</span>,
 <span class="k">def</span> gate_is_open(actor: Actor, today: date, terms: GateTerms) -> bool:
     <span class="k">return</span> today &lt;= terms.sunset <span class="k">and</span> terms.audience <span class="k">in</span> actor.cohorts
 
-<span class="c"># case_law/test_schedule_g_gates.py</span>
+<span class="c"># precedents/test_schedule_g_gates.py</span>
 <span class="k">def</span> test_a_gate_past_its_sunset_is_closed_even_for_its_audience():
     beta = Actor(role=Role.CUSTOMER, cohorts=frozenset({<span class="s">"beta_customers"</span>}))
     <span class="k">assert not</span> gate_is_open(beta, date(<span class="s">2026, 10, 2</span>), INSTANT_REFUNDS)</pre>
@@ -549,7 +549,7 @@ REFUND_SUBMISSION = ReplayTerms(key=<span class="s">"refund:{order_id}"</span>,
         <span class="k">return</span> ServePrior(prior)
     <span class="k">return</span> Proceed()
 
-<span class="c"># case_law/test_schedule_i_replays.py</span>
+<span class="c"># precedents/test_schedule_i_replays.py</span>
 <span class="k">def</span> test_resubmitting_within_the_window_returns_the_original_receipt():
     prior = Receipt(id=<span class="s">"r-1"</span>)
     ruling = on_replay(prior, timedelta(minutes=<span class="s">5</span>), REFUND_SUBMISSION)
@@ -577,7 +577,7 @@ REFUND_DECISIONS = RetentionTerms(<span class="s">"refund_decisions"</span>,
 <span class="k">def</span> disposition(age: timedelta, terms: RetentionTerms) -> Disposition:
     <span class="k">return</span> terms.then <span class="k">if</span> age &gt; terms.keep_for <span class="k">else</span> Disposition.KEEP
 
-<span class="c"># case_law/test_schedule_t_retention.py</span>
+<span class="c"># precedents/test_schedule_t_retention.py</span>
 <span class="k">def</span> test_a_decision_older_than_seven_years_is_anonymized_not_purged():
     <span class="k">assert</span> disposition(timedelta(days=<span class="s">7 * 365 + 1</span>),
                        REFUND_DECISIONS) <span class="k">is</span> Disposition.ANONYMIZE</pre>
@@ -604,7 +604,7 @@ RECONCILE_LEDGER = CadenceTerms(<span class="s">"reconcile_ledger"</span>,
     <span class="k">if</span> since &lt; terms.every + terms.grace:  <span class="k">return</span> Due()
     <span class="k">return</span> Missed(overdue_by=since - terms.every)
 
-<span class="c"># case_law/test_schedule_s_cadence.py</span>
+<span class="c"># precedents/test_schedule_s_cadence.py</span>
 <span class="k">def</span> test_a_run_later_than_cadence_plus_grace_is_a_breach():
     last = datetime(<span class="s">2026, 8, 5, 3, 0</span>)
     now = datetime(<span class="s">2026, 8, 6, 5, 1</span>)     <span class="c"># 26h01m: past the 2h grace</span>
@@ -631,14 +631,14 @@ REFUND_ESCALATIONS = VigilanceTerms(measure=<span class="s">"refund_escalations"
                           f"threshold {terms.threshold}"</span>)
     <span class="k">return None</span>
 
-<span class="c"># case_law/test_schedule_o_vigilance.py</span>
+<span class="c"># precedents/test_schedule_o_vigilance.py</span>
 <span class="k">def</span> test_six_escalations_in_an_hour_raises_an_alert():
     <span class="k">assert</span> breach(<span class="s">6</span>, REFUND_ESCALATIONS) <span class="k">is not None</span></pre>
     </details>
 
     <details class="sched"><summary>L · Copy &amp; locale — <code>every sentence is a term</code></summary>
       <p class="pane-note">User-facing prose is part of the contract — it is the part the customer
-      actually reads. Keyed terms per locale; the case law is exhaustive over the Definitions, so a
+      actually reads. Keyed terms per locale; the precedents are exhaustive over the Definitions, so a
       new denial reason without copy fails the build in every language at once.</p>
 <pre><span class="c"># schedules/copy.py — Schedule L.</span>
 COPY: dict[str, dict[str, str]] = {
@@ -655,7 +655,7 @@ COPY: dict[str, dict[str, str]] = {
 <span class="k">def</span> say(key: str, locale: str) -> str:
     <span class="k">return</span> COPY[key][locale]          <span class="c"># a missing key raises — by design</span>
 
-<span class="c"># case_law/test_schedule_l_copy.py — exhaustive over the Definitions.</span>
+<span class="c"># precedents/test_schedule_l_copy.py — exhaustive over the Definitions.</span>
 <span class="k">def</span> test_every_denial_reason_has_copy_in_every_locale():
     <span class="k">for</span> reason <span class="k">in</span> DenialReason:
         <span class="k">for</span> locale <span class="k">in</span> (<span class="s">"en"</span>, <span class="s">"es"</span>):
@@ -676,7 +676,7 @@ COPY: dict[str, dict[str, str]] = {
     <div class="comparator">
       <div class="tabs" role="tablist" aria-label="Records schedule layers">
         <button class="tab" role="tab" id="tm1" aria-selected="true" aria-controls="pm1">Terms</button>
-        <button class="tab" role="tab" id="tm2" aria-selected="false" aria-controls="pm2">Rulings + case law</button>
+        <button class="tab" role="tab" id="tm2" aria-selected="false" aria-controls="pm2">Rulings + precedents</button>
         <button class="tab" role="tab" id="tm3" aria-selected="false" aria-controls="pm3">Migrations are amendments</button>
       </div>
 
@@ -723,7 +723,7 @@ ORDER_RECORD = RecordTerms(
     declared = set(terms.columns.values())
     <span class="k">return</span> [col <span class="k">for</span> col <span class="k">in</span> live.columns <span class="k">if</span> col <span class="k">not in</span> declared]
 
-<span class="c"># case_law/test_schedule_m_records.py</span>
+<span class="c"># precedents/test_schedule_m_records.py</span>
 <span class="k">def</span> test_every_field_of_order_has_a_declared_column():
     <span class="k">assert</span> uncovered_fields(ORDER_RECORD) == []
 
@@ -755,7 +755,7 @@ ORDER_RECORD = RecordTerms(..., columns={...,
 <span class="k">ALTER TABLE</span> orders <span class="k">ADD COLUMN</span> gift_wrapped boolean
     <span class="k">NOT NULL DEFAULT</span> false;
 
-<span class="c"># and the case law that motivated it, in the same commit:</span>
+<span class="c"># and the precedents that motivated it, in the same commit:</span>
 <span class="k">def</span> test_gift_wrapped_orders_refund_without_the_restocking_fee(): ...</pre>
       </div>
     </div>
@@ -786,7 +786,7 @@ ORDER_RECORD = RecordTerms(..., columns={...,
 <pre><span class="c"># articles/governing_law.py — binds every clause in the program.</span>
 <span class="k">@dataclass</span>(frozen=<span class="k">True</span>)
 <span class="k">class</span> LayeringTerms:
-    <span class="s">"""Article I — who may cite whom. Lower layers never import upward."""</span>
+    <span class="s">"""Who may cite whom. Lower layers never import upward."""</span>
     order: tuple[str, ...]
 
 ARTICLE_I = LayeringTerms(order=(
@@ -800,7 +800,7 @@ ARTICLE_I = LayeringTerms(order=(
 
 <span class="k">@dataclass</span>(frozen=<span class="k">True</span>)
 <span class="k">class</span> BoundaryTerms:
-    <span class="s">"""Article II — what is one deployable, and what crosses between them."""</span>
+    <span class="s">"""What is one deployable, and what crosses between them."""</span>
     deployable: str
     may_call: tuple[str, ...]        <span class="c"># other deployables, by contract only</span>
     crossing: str                    <span class="c"># "http" | "queue" — never a shared DB</span>
@@ -813,7 +813,7 @@ ARTICLE_II = (
 
 <span class="k">@dataclass</span>(frozen=<span class="k">True</span>)
 <span class="k">class</span> StateTerms:
-    <span class="s">"""Article III — where truth lives. One owner per fact; all else is cache."""</span>
+    <span class="s">"""Where truth lives. One owner per fact; all else is cache."""</span>
     fact: str
     owner: str
 
@@ -823,7 +823,7 @@ ARTICLE_III = (StateTerms(<span class="s">"orders"</span>, owner=<span class="s"
 
       <div class="pane" id="pa2" role="tabpanel" aria-labelledby="ta2">
         <p class="pane-note"><span class="win">Articles are enforced, not aspirational.</span> The ruling is pure —
-        an import graph is just data — so the architecture check is ordinary case law run in CI.
+        an import graph is just data — so the architecture check is ordinary precedent run in CI.
         Tools like import-linter already speak this shape; here the terms stay in your Articles and
         the tool is mere machinery.</p>
 <pre><span class="c"># articles/rulings.py — pure: an import graph in, violations out.</span>
@@ -834,7 +834,7 @@ ARTICLE_III = (StateTerms(<span class="s">"orders"</span>, owner=<span class="s"
             <span class="k">if</span> rank[edge.importer_layer] &lt; rank[edge.imported_layer]]
 
 
-<span class="c"># case_law/test_article_i_layering.py — architecture case law, in CI.</span>
+<span class="c"># precedents/test_article_i_layering.py — architecture precedents, in CI.</span>
 <span class="k">def</span> test_no_clause_may_cite_a_performer():
     graph = scan_imports(<span class="s">"src/"</span>)          <span class="c"># gathered fact (impure, in conftest)</span>
     <span class="k">assert</span> layering_violations(graph, ARTICLE_I) == []
@@ -860,7 +860,7 @@ in exchange for a bounded checkout time.
 <span class="s">"http"</span> → <span class="s">"queue"</span>, under Schedule D terms CAPTURE_PAYMENT
 (attempts_owed=5, escalate_after=15min).
 
-<span class="k">Case law affected</span>:
+<span class="k">Precedents affected</span>:
   - test_checkout_completes_without_awaiting_capture  (new)
   - test_capture_breach_pages_the_merchant            (new)
   - test_checkout_returns_the_captured_receipt        (overruled)</pre>
@@ -877,7 +877,7 @@ in exchange for a bounded checkout time.
     <p>With principles 8–10 added to the pattern, every kind of code in a program now has a
     place:</p>
     <ol class="rules">
-      <li><strong>Business rules</strong> → named clauses, pure terms, case law. (The pattern's
+      <li><strong>Business rules</strong> → named clauses, pure terms, precedents. (The pattern's
       original ground.)</li>
       <li><strong>I/O and side effects</strong> → performers following gather → consult → perform,
       with the evidence file as the only translation point. (Principle 8.)</li>
@@ -888,11 +888,11 @@ in exchange for a bounded checkout time.
       their persistence is Schedule M, and every migration is a three-part amendment. (§6.)</li>
       <li><strong>Architecture</strong> → Articles: governing law declared as data, violations found
       by pure rulings over the import graph, amended only through recorded ADR amendments. (§7.)</li>
-      <li><strong>Documentation</strong> → the docket, generated from case law, never drifting.
+      <li><strong>Documentation</strong> → the docket, which is the test listing, never drifting.
       (Principle 10.)</li>
     </ol>
     <div class="verdict"><strong>HOLDING</strong> — an internal concern is drafted correctly when the obligation
-    is a schedule you could amend in one line, the judgment is a pure ruling with case law, and the
+    is a schedule you could amend in one line, the judgment is a pure ruling with precedents, and the
     machinery is a generic performer that would work unchanged for any other schedule of its kind.
     If changing a TTL, a retry count, or a form field touches machinery, the schedule has leaked;
     if the machinery makes a decision the ruling should have made, a term is hiding. Same dispute

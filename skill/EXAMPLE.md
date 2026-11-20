@@ -1,14 +1,29 @@
 # Worked example: a refund policy, in Python
 
-**Parties.** Who is bound, before any code:
+Each party's chapter is a module (`contract/<party>.py`). The procedure
+has one too. The precedents (in legal terms: case law) mirror the modules.
+There is no prose contract file. The spec you read is
+`pytest --collect-only -q`.
 
-- **Customer** — may request a refund within the window; relies on the
-  Merchant to honor it.
-- **Merchant** — owes the refund (minus restocking fee) unless a denial
-  reason applies; liable for damaged-on-arrival goods.
-- **Payment processor** — must have settled the order before any refund
-  is issued; the refund is denied, not queued, until it has. Bears the
-  cost of any refund that isn't for damaged goods.
+```
+contract/
+  definitions.py  customer.py  merchant.py  processor.py
+  refund_procedure.py
+precedents/
+  test_customer.py  test_merchant.py  test_processor.py
+  test_refund_procedure.py
+  test_structure.py
+```
+
+**Parties.** Who is bound, before any code. Each one is a module:
+
+- **Customer** (`customer.py`) — may request a refund within the window;
+  relies on the Merchant to honor it.
+- **Merchant** (`merchant.py`) — owes the refund (minus restocking fee)
+  unless a denial reason applies; liable for damaged-on-arrival goods.
+- **Payment processor** (`processor.py`) — must have settled the order
+  before any refund is issued; the refund is denied, not queued, until it
+  has. Bears the cost of any refund that isn't for damaged goods.
 - **The order store** (database) — its `settled` and `delivered_on` are
   the facts of record; clauses decide from them and never re-check
   elsewhere.
@@ -16,8 +31,9 @@
 **Definitions.** Only the terms the clauses need to name:
 
 ```python
+# contract/definitions.py
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 from enum import Enum
 
 
@@ -46,12 +62,6 @@ class RefundRequest:
 
 
 @dataclass(frozen=True)
-class RefundPolicy:
-    window: timedelta = timedelta(days=14)
-    restocking_fee_percent: int = 10
-
-
-@dataclass(frozen=True)
 class RefundDecision:
     approved: bool
     amount_cents: int = 0
@@ -59,101 +69,234 @@ class RefundDecision:
     reason: DenialReason | None = None
 ```
 
+**The party modules.** Each public function is a clause. Each rule value
+is a named constant. No docstring repeats the rule. The claim a docstring
+would make is a precedent name below.
+
+```python
+# contract/customer.py
+from datetime import timedelta
+
+from contract.definitions import Order, RefundRequest
+
+RETURN_WINDOW_DAYS = 14
+
+
+def refund_window_is_open(request: RefundRequest, order: Order) -> bool:
+    return request.requested_on <= order.delivered_on + timedelta(days=RETURN_WINDOW_DAYS)
+```
+
+```python
+# contract/processor.py
+from contract.definitions import Order
+
+
+def order_is_refundable(order: Order) -> bool:
+    return order.settled and order.delivered_on is not None
+```
+
+```python
+# contract/merchant.py
+from contract.definitions import Order, Party
+
+RESTOCKING_FEE_PERCENT = 10
+
+
+def refundable_amount(order: Order) -> int:
+    if order.damaged_on_arrival:
+        return order.total_cents
+    fee = order.total_cents * RESTOCKING_FEE_PERCENT // 100
+    return order.total_cents - fee
+
+
+def liable_party(order: Order) -> Party:
+    return Party.MERCHANT if order.damaged_on_arrival else Party.PROCESSOR
+```
+
 **The operative clause.** One interaction, one main function. Near-zero
 cyclomatic complexity; every line is an obligation with a readable name.
 It states *who owes what, when* — and nothing about *how*:
 
 ```python
-def settle_refund_request(
-    request: RefundRequest, order: Order, policy: RefundPolicy
-) -> RefundDecision:
-    """Clause 4 — Refunds. Pure: facts in, decision out."""
+# contract/refund_procedure.py
+from contract.customer import refund_window_is_open
+from contract.definitions import DenialReason, Order, RefundDecision, RefundRequest
+from contract.merchant import liable_party, refundable_amount
+from contract.processor import order_is_refundable
+
+
+def settle_refund_request(request: RefundRequest, order: Order) -> RefundDecision:
     if not order_is_refundable(order):
         return RefundDecision(approved=False, reason=DenialReason.ORDER_NOT_SETTLED)
-    if not refund_window_is_open(request, order, policy):
+    if not refund_window_is_open(request, order):
         return RefundDecision(approved=False, reason=DenialReason.WINDOW_CLOSED)
     return RefundDecision(
         approved=True,
-        amount_cents=refundable_amount(order, policy),
+        amount_cents=refundable_amount(order),
         paid_by=liable_party(order),
     )
 ```
 
-**The internals.** Same principle, one level down — but not abused. These
-bodies are already plainer than further names would be, so the splitting
-stops here:
+**Precedents.** Pure tests against the public clauses. Each name is a
+claim a party could bring; no mocks, no setup rituals — because the terms
+are pure. One file per module:
 
 ```python
-def order_is_refundable(order: Order) -> bool:
-    """Clause 4.1 — only settled, delivered orders may be refunded."""
-    return order.settled and order.delivered_on is not None
+# precedents/test_customer.py
+from datetime import date
+
+from contract.customer import refund_window_is_open
+from contract.definitions import Order, RefundRequest
+
+DELIVERED = Order(total_cents=10_000, settled=True,
+                  delivered_on=date(2026, 7, 1), damaged_on_arrival=False)
 
 
-def refund_window_is_open(
-    request: RefundRequest, order: Order, policy: RefundPolicy
-) -> bool:
-    """Clause 4.2 — the window runs from delivery, not purchase."""
-    return request.requested_on <= order.delivered_on + policy.window
+def test_customer_may_still_request_a_refund_on_the_last_day_of_the_window():
+    assert refund_window_is_open(RefundRequest(requested_on=date(2026, 7, 15)), DELIVERED)
 
 
-def refundable_amount(order: Order, policy: RefundPolicy) -> int:
-    """Clause 4.3 — goods damaged on arrival refund in full;
-    otherwise the merchant withholds the restocking fee."""
-    if order.damaged_on_arrival:
-        return order.total_cents
-    fee = order.total_cents * policy.restocking_fee_percent // 100
-    return order.total_cents - fee
-
-
-def liable_party(order: Order) -> Party:
-    """Clause 4.4 — the merchant bears damage; the processor bears the rest."""
-    return Party.MERCHANT if order.damaged_on_arrival else Party.PROCESSOR
+def test_customer_is_refused_a_refund_the_day_after_the_window_closes():
+    assert not refund_window_is_open(RefundRequest(requested_on=date(2026, 7, 16)), DELIVERED)
 ```
 
-**Case law.** Pure tests against the top-level clause. Each name is a claim
-a party could bring; no mocks, no setup rituals — because the terms are
-pure. These tests pin the *contract*, so the internals can be redrafted
-freely as long as the rulings stand:
+```python
+# precedents/test_processor.py
+from datetime import date
+
+from contract.definitions import Order
+from contract.processor import order_is_refundable
+
+
+def test_processor_refuses_a_refund_on_an_order_it_has_not_settled():
+    unsettled = Order(total_cents=10_000, settled=False,
+                      delivered_on=date(2026, 7, 1), damaged_on_arrival=False)
+    assert not order_is_refundable(unsettled)
+```
 
 ```python
+# precedents/test_merchant.py
+from datetime import date
+
+from contract.definitions import Order, Party
+from contract.merchant import liable_party, refundable_amount
+
+
+def an_order(damaged: bool) -> Order:
+    return Order(total_cents=10_000, settled=True,
+                 delivered_on=date(2026, 7, 1), damaged_on_arrival=damaged)
+
+
+def test_merchant_withholds_the_restocking_fee_on_an_undamaged_return():
+    assert refundable_amount(an_order(damaged=False)) == 9_000
+
+
+def test_merchant_refunds_damaged_goods_in_full():
+    assert refundable_amount(an_order(damaged=True)) == 10_000
+
+
+def test_merchant_bears_damage_and_the_processor_bears_the_rest():
+    assert liable_party(an_order(damaged=True)) is Party.MERCHANT
+    assert liable_party(an_order(damaged=False)) is Party.PROCESSOR
+```
+
+```python
+# precedents/test_refund_procedure.py
+from datetime import date
+
+from contract.definitions import DenialReason, Order, Party, RefundRequest
+from contract.refund_procedure import settle_refund_request
+
+
 def test_customer_may_return_damaged_goods_for_a_full_refund():
+    # Facts
     order = Order(total_cents=10_000, settled=True,
                   delivered_on=date(2026, 7, 1), damaged_on_arrival=True)
-    decision = settle_refund_request(
-        RefundRequest(requested_on=date(2026, 7, 5)), order, RefundPolicy()
-    )
+    # Claim
+    decision = settle_refund_request(RefundRequest(requested_on=date(2026, 7, 5)), order)
+    # Ruling
     assert decision.approved
     assert decision.amount_cents == 10_000
     assert decision.paid_by is Party.MERCHANT
 
 
-def test_undamaged_returns_bear_the_restocking_fee():
+def test_a_late_request_is_denied_because_the_window_closed():
     order = Order(total_cents=10_000, settled=True,
                   delivered_on=date(2026, 7, 1), damaged_on_arrival=False)
-    decision = settle_refund_request(
-        RefundRequest(requested_on=date(2026, 7, 5)), order, RefundPolicy()
-    )
-    assert decision.approved and decision.amount_cents == 9_000
-
-
-def test_the_window_runs_from_delivery_and_then_closes():
-    order = Order(total_cents=10_000, settled=True,
-                  delivered_on=date(2026, 7, 1), damaged_on_arrival=False)
-    late = RefundRequest(requested_on=date(2026, 7, 16))
-    decision = settle_refund_request(late, order, RefundPolicy())
+    decision = settle_refund_request(RefundRequest(requested_on=date(2026, 7, 16)), order)
     assert not decision.approved
     assert decision.reason is DenialReason.WINDOW_CLOSED
 ```
 
+**Structural precedents.** These tests enforce what a document would only
+state. They use `ast`, `inspect`, `importlib` and `pkgutil`. Nothing else.
+Run them with `python -m pytest` from the project root, so `contract` and
+`precedents` import.
+
+```python
+# precedents/test_structure.py
+import ast
+import importlib
+import inspect
+import pkgutil
+from pathlib import Path
+
+import contract
+
+PRECEDENTS = Path(__file__).parent
+CHAPTERS = [m.name for m in pkgutil.iter_modules(contract.__path__) if m.name != "definitions"]
+
+
+def clauses_of(chapter: str) -> list[str]:
+    """Public functions defined in contract/<chapter>.py."""
+    module = importlib.import_module(f"contract.{chapter}")
+    return [name for name, fn in inspect.getmembers(module, inspect.isfunction)
+            if not name.startswith("_") and fn.__module__ == module.__name__]
+
+
+def names_called_by_precedents() -> set[str]:
+    called = set()
+    for path in PRECEDENTS.glob("test_*.py"):
+        if path.name == Path(__file__).name:
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.Call):
+                called.add(ast.unparse(node.func).split(".")[-1])
+    return called
+
+
+def test_every_party_module_has_at_least_one_clause():
+    assert CHAPTERS, "no party modules found"
+    for chapter in CHAPTERS:
+        assert clauses_of(chapter), f"contract/{chapter}.py binds nobody"
+
+
+def test_every_clause_is_cited_by_some_precedent():
+    called = names_called_by_precedents()
+    for chapter in CHAPTERS:
+        for clause in clauses_of(chapter):
+            assert clause in called, f"{chapter}.{clause} has no precedent"
+```
+
+Both tests fail when the rule breaks. Add `def stray(): ...` to
+`contract/merchant.py` and the second one fails. Add an empty module to
+`contract/` and the first one fails. A new party module needs a clause
+and a precedent before the build is green.
+
+Limit: a precedent cites a clause by function name. A same-named call to
+another function can hide a gap. Upgrade path: resolve the call to its
+module with `ast` imports.
+
 **Execution of the contract.** Side effects live at the boundary, after the
 decision. The performer gathers facts (impure), consults the terms (pure),
-then performs. It never re-interprets the terms:
+then performs. It may dispatch on a field of the decision. It never
+re-interprets the terms:
 
 ```python
 def handle_refund_endpoint(order_id: str, request: RefundRequest) -> None:
     order = orders_repo.load(order_id)                    # gather facts
-    decision = settle_refund_request(request, order, current_policy())  # consult terms
-    if decision.approved:                                  # perform
+    decision = settle_refund_request(request, order)      # consult terms
+    if decision.approved:                                 # perform
         payments.credit(order_id, decision.amount_cents, from_=decision.paid_by)
     notifications.send_refund_outcome(order_id, decision)
 ```
@@ -170,47 +313,27 @@ send a warning before breach, log every escalation for audit. Those are
 **obligation clauses**: `party, action, deadline/trigger → performed`,
 where failing to perform is a breach of that clause, not a missing feature.
 
-The code that follows is the source. The `CONTRACT.md` below is generated
-from it — clause numbers match because they come from the code.
+```
+contract/
+  definitions.py  agent.py  system.py  sla_procedure.py
+precedents/
+  test_agent.py  test_system.py  test_sla_procedure.py
+  test_structure.py
+```
 
-## `CONTRACT.md` (excerpt, generated)
+**Parties.** The Agent and the System each get a module. The System is a
+party, not infrastructure. The Customer only receives the warning. It owes
+nothing here, so it has no module. The audit log is a party too. It owes
+a record of every escalation. This example only performs that duty at the
+edge (`audit_log=True`). A full draft gives the audit log its own module
+and a precedent.
 
-> *Generated from code; edit the code, not this file.*
-> Article and clause text come from the clause docstrings. The docket (the
-> list of disputes each clause settles) comes from the test names.
-
-> ### Article I — The Agent
-> §1. The Agent owes the Customer a first response within the response
-> window set by the ticket's severity (Clause 1.1). Failure to respond
-> before that window closes is a breach (Clause 1.2), regardless of cause.
->
-> ### Article II — The System
-> §1. The System must warn the Customer once the response deadline is
-> within the configured warning lead time and no response has been given
-> (Clause 2.1). Silence past this point is a breach of this Article, not an
-> absence of feature.
-> §2. The System must escalate the ticket to a senior Agent the instant
-> the Agent's response window closes without a response, and must not
-> escalate the same ticket twice (Clause 2.2).
->
-> ### Article III — SLA Evaluation Procedure
-> On each sweep, for every open ticket: the System first checks whether
-> the Agent is in breach (§ Article I.1). If the deadline is near and
-> unmet, the System discharges its warning duty (Article II §1). If the
-> deadline has passed and no escalation has occurred, the System discharges
-> its escalation duty (Article II §2). Every escalation is logged for
-> audit — the log entry is the System's proof of performance.
-
-**Parties.** Already set by the generated articles above — Customer,
-Agent, System — and the System is a party, not infrastructure. The audit
-log is the System's proof of performance, so its duty (record every
-escalation) is a clause too.
-
-**Definitions.** Only the terms the clauses need to name:
+**Definitions.**
 
 ```python
+# contract/definitions.py
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 
 
@@ -223,12 +346,6 @@ class Party(Enum):
 class Severity(Enum):
     LOW = "low"
     HIGH = "high"
-
-
-@dataclass(frozen=True)
-class SlaPolicy:
-    response_window: dict[Severity, timedelta]
-    warning_lead_time: timedelta = timedelta(hours=1)
 
 
 @dataclass(frozen=True)
@@ -246,106 +363,133 @@ class EscalationOutcome:
     breach: bool = False
 ```
 
-**Article I — Agent's obligation** (decision-shaped: has the deadline
-passed?):
+**The Agent module** (decision-shaped: has the deadline passed?):
 
 ```python
-def response_deadline(ticket: Ticket, policy: SlaPolicy) -> datetime:
-    """Clause 1.1 — the Agent owes a first response within the severity's window."""
-    return ticket.opened_at + policy.response_window[ticket.severity]
+# contract/agent.py
+from datetime import datetime, timedelta
+
+from contract.definitions import Severity, Ticket
+
+RESPONSE_WINDOW = {Severity.LOW: timedelta(hours=24), Severity.HIGH: timedelta(hours=4)}
 
 
-def agent_is_in_breach(ticket: Ticket, policy: SlaPolicy, now: datetime) -> bool:
-    """Clause 1.2 — breach if unanswered past the deadline."""
+def response_deadline(ticket: Ticket) -> datetime:
+    return ticket.opened_at + RESPONSE_WINDOW[ticket.severity]
+
+
+def agent_is_in_breach(ticket: Ticket, now: datetime) -> bool:
     if ticket.first_response_at is not None:
         return False
-    return now > response_deadline(ticket, policy)
+    return now > response_deadline(ticket)
 ```
 
-**Article II — System's obligations** (obligation-shaped: the System must
-*act* on a trigger, not just classify facts — this is the clause shape the
-refund example never needed):
+**The System module** (obligation-shaped: the System must *act* on a
+trigger, not just classify facts — this is the clause shape the refund
+example never needed):
 
 ```python
-def system_must_warn_customer(ticket: Ticket, policy: SlaPolicy, now: datetime) -> bool:
-    """Clause 2.1 — the System must warn the customer once the warning
-    lead time enters the response window, and before breach. Failing to
-    fire this warning is a breach of clause 2.1, not a missing feature."""
-    deadline = response_deadline(ticket, policy)
-    warn_from = deadline - policy.warning_lead_time
-    return (
-        ticket.first_response_at is None
-        and warn_from <= now <= deadline
-    )
+# contract/system.py
+from datetime import datetime, timedelta
+
+from contract.agent import agent_is_in_breach, response_deadline
+from contract.definitions import Ticket
+
+WARNING_LEAD_TIME = timedelta(hours=1)
 
 
-def system_must_escalate(ticket: Ticket, policy: SlaPolicy, now: datetime) -> bool:
-    """Clause 2.2 — the System must escalate to a senior Agent the instant
-    the response deadline is breached and no escalation has happened yet.
-    This is a duty triggered by time, not a decision made from a request."""
-    return agent_is_in_breach(ticket, policy, now) and not ticket.escalated
+def system_must_warn_customer(ticket: Ticket, now: datetime) -> bool:
+    warn_from = response_deadline(ticket) - WARNING_LEAD_TIME
+    return ticket.first_response_at is None and warn_from <= now <= response_deadline(ticket)
+
+
+def system_must_escalate(ticket: Ticket, now: datetime) -> bool:
+    return agent_is_in_breach(ticket, now) and not ticket.escalated
 ```
 
-**The operative clause.** Reads top-to-bottom; states who owes what, when —
-combining the decision clause (breach?) with the obligation clauses (must
-the System act?):
+**The operative clause.** Reads top-to-bottom; combines the decision
+clause (breach?) with the obligation clauses (must the System act?):
 
 ```python
-def evaluate_ticket_sla(ticket: Ticket, policy: SlaPolicy, now: datetime) -> EscalationOutcome:
-    """Clause 3 — SLA evaluation. Pure: facts in, outcome out. The outcome
-    tells the performer which of the System's obligations are currently due."""
+# contract/sla_procedure.py
+from datetime import datetime
+
+from contract.agent import agent_is_in_breach
+from contract.definitions import EscalationOutcome, Party, Ticket
+from contract.system import system_must_escalate, system_must_warn_customer
+
+
+def evaluate_ticket_sla(ticket: Ticket, now: datetime) -> EscalationOutcome:
     return EscalationOutcome(
-        warn_customer=system_must_warn_customer(ticket, policy, now),
-        escalate_to=Party.SYSTEM if system_must_escalate(ticket, policy, now) else None,
-        breach=agent_is_in_breach(ticket, policy, now),
+        warn_customer=system_must_warn_customer(ticket, now),
+        escalate_to=Party.SYSTEM if system_must_escalate(ticket, now) else None,
+        breach=agent_is_in_breach(ticket, now),
     )
 ```
 
-**Case law.** One claim per party, including the System — this is the
-per-party dispute test applied as tests:
+**Precedents.** One file per module, and at least one claim per party,
+including the System. This is the per-party dispute test as tests:
 
 ```python
-HIGH_SEVERITY_POLICY = SlaPolicy(response_window={Severity.HIGH: timedelta(hours=4)})
+# precedents/test_agent.py
+from datetime import datetime
+
+from contract.agent import agent_is_in_breach, response_deadline
+from contract.definitions import Severity, Ticket
+
+OPENED = datetime(2026, 7, 14, 8, 0)
 
 
-def test_system_must_warn_customer_before_the_deadline_hits():
-    ticket = Ticket(
-        severity=Severity.HIGH,
-        opened_at=datetime(2026, 7, 14, 8, 0),
-        first_response_at=None,
-        escalated=False,
-    )
-    now = datetime(2026, 7, 14, 11, 30)  # 30 min before the 4h deadline
-    outcome = evaluate_ticket_sla(ticket, HIGH_SEVERITY_POLICY, now)
-    assert outcome.warn_customer
-    assert not outcome.breach
+def a_ticket(answered_at: datetime | None) -> Ticket:
+    return Ticket(Severity.HIGH, OPENED, first_response_at=answered_at, escalated=False)
 
 
-def test_system_must_escalate_the_instant_the_deadline_is_missed():
-    ticket = Ticket(
-        severity=Severity.HIGH,
-        opened_at=datetime(2026, 7, 14, 8, 0),
-        first_response_at=None,
-        escalated=False,
-    )
-    now = datetime(2026, 7, 14, 12, 1)  # 1 minute past the 4h deadline
-    outcome = evaluate_ticket_sla(ticket, HIGH_SEVERITY_POLICY, now)
+def test_agent_owes_a_first_response_four_hours_after_a_high_severity_ticket_opens():
+    assert response_deadline(a_ticket(None)) == datetime(2026, 7, 14, 12, 0)
+
+
+def test_agent_is_in_breach_once_the_deadline_passes_unanswered():
+    assert agent_is_in_breach(a_ticket(None), datetime(2026, 7, 14, 12, 1))
+
+
+def test_agent_answering_in_time_is_never_in_breach():
+    assert not agent_is_in_breach(a_ticket(datetime(2026, 7, 14, 9, 0)), datetime(2026, 7, 14, 13, 0))
+```
+
+```python
+# precedents/test_system.py
+from datetime import datetime
+
+from contract.definitions import Severity, Ticket
+from contract.system import system_must_escalate, system_must_warn_customer
+
+UNANSWERED = Ticket(Severity.HIGH, datetime(2026, 7, 14, 8, 0), None, escalated=False)
+
+
+def test_system_must_warn_customer_thirty_minutes_before_the_deadline():
+    assert system_must_warn_customer(UNANSWERED, datetime(2026, 7, 14, 11, 30))
+
+
+def test_system_must_escalate_the_minute_after_the_deadline_is_missed():
+    assert system_must_escalate(UNANSWERED, datetime(2026, 7, 14, 12, 1))
+```
+
+```python
+# precedents/test_sla_procedure.py
+from datetime import datetime
+
+from contract.definitions import Party, Severity, Ticket
+from contract.sla_procedure import evaluate_ticket_sla
+
+
+def test_a_missed_deadline_is_a_breach_and_the_system_escalates():
+    ticket = Ticket(Severity.HIGH, datetime(2026, 7, 14, 8, 0), None, escalated=False)
+    outcome = evaluate_ticket_sla(ticket, datetime(2026, 7, 14, 12, 1))
     assert outcome.breach
     assert outcome.escalate_to is Party.SYSTEM
-
-
-def test_agent_answering_in_time_discharges_the_obligation():
-    ticket = Ticket(
-        severity=Severity.HIGH,
-        opened_at=datetime(2026, 7, 14, 8, 0),
-        first_response_at=datetime(2026, 7, 14, 9, 0),
-        escalated=False,
-    )
-    now = datetime(2026, 7, 14, 13, 0)  # well past the original deadline
-    outcome = evaluate_ticket_sla(ticket, HIGH_SEVERITY_POLICY, now)
-    assert not outcome.breach
-    assert not outcome.warn_customer
 ```
+
+The same `test_structure.py` guards this project unchanged.
 
 **Execution of the contract.** The performer polls tickets, consults the
 pure terms, then performs the System's obligations — it never re-interprets
@@ -354,9 +498,9 @@ what's due:
 ```python
 def run_sla_sweep(now: datetime) -> None:
     for ticket in tickets_repo.due_for_sla_check():          # gather facts
-        outcome = evaluate_ticket_sla(ticket, current_sla_policy(), now)  # consult terms
+        outcome = evaluate_ticket_sla(ticket, now)            # consult terms
         if outcome.warn_customer:                             # perform
             notifications.send_sla_warning(ticket.id)
         if outcome.escalate_to is Party.SYSTEM:
-            escalations.escalate(ticket.id, audit_log=True)    # discharges clause 2.2
+            escalations.escalate(ticket.id, audit_log=True)
 ```

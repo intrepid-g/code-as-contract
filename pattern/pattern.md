@@ -9,19 +9,23 @@ Read any well-drafted legal contract and you find the same structure good
 code wants: the **parties** first, then **sections** stating each party's
 obligations, responsibilities and abilities, the **business rules** and how
 they are applied, the **succession of events** — what must happen, in
-what order, and who has to do it — and the **case law** that settles
-disputes. Definitions exist to serve those clauses, not to open the document.
+what order, and who has to do it — and the **precedents** (in legal
+terms: case law) that settle disputes. Definitions exist to serve those
+clauses, not to open the document.
 
 We hold these principles:
 
 1. **Parties come first.** Before any type or function, list every party —
    people, and internal system actors too (the database, queue, cache,
    scheduler, an LLM) — with its duties and what it may rely on from the
-   others. Each party is bound by at least one clause. Definitions (types)
+   others. A party's chapter is a module, `contract/<party>.py`, and each
+   party module holds at least one clause that binds that party. Definitions (types)
    serve the clauses: declare one when a clause needs to name a party, an
    amount or a deadline, never as an opening ceremony.
 2. **Every business rule has a name.** A rule that exists only as an inline
    `if` is an unwritten verbal agreement — unenforceable and disputed later.
+   Rule values have names too (`RETURN_WINDOW_DAYS = 14`). A docstring does
+   not carry rule text: a claim a docstring would make is a precedent name.
 3. **The operative clause reads top-to-bottom.** The main function of an
    interaction has minimal — ideally zero — cyclomatic complexity. It barely
    does anything itself: it calls named functions that abstract the
@@ -30,23 +34,24 @@ We hold these principles:
    says* is a pure function of facts. *Performing* the contract (charging
    cards, writing rows, sending mail) happens at the edges, after the
    decision. You can judge the terms without a courtroom.
-5. **Tests are case law.** Each pure unit test is a scenario a party could
+5. **Tests are precedents.** Each pure unit test is a scenario a party could
    dispute, named as a claim, settled by the contract at the highest level.
-   When prose and case law disagree, the case law wins.
+   When prose and precedents disagree, the precedents win.
 6. **The principle applies recursively — without abuse.** Implementations of
    the named functions follow the same discipline, but splitting stops when
    a function's body is plainer than another name would be. A contract
    drowning in cross-references is as bad as one long run-on clause.
 7. **Changes are amendments.** A behavior change must be legible as an
-   amendment: the diff shows which clause changed and which case law
-   (tests) now rules differently.
+   amendment: the diff shows which clause changed and which precedents
+   (tests) now rule differently.
 8. **Execution follows the succession of events.** The boundary of every
    interaction is a **performer** with near-zero branching: it *gathers*
    the facts into a frozen **evidence file** (the only place the outside
    world is translated into the Definitions), *consults* the terms, and
-   *performs* the decision — citing only the decision's own fields, never
-   re-interpreting the terms. If performing needs more information, the
-   decision's Definition is defective; fix it there.
+   *performs* the decision. It may hold one dispatch `if` on a field of the
+   decision (`if decision.approved: payments.refund(...)`). It never
+   re-derives or re-interprets a rule. If performing needs more
+   information, the decision's Definition is defective; fix it there.
 9. **Operational demands are schedules.** Caching, queuing, retries,
    timeouts, forms and screens — obligations about *how* performance
    happens are not scattered through the code as incantations. Each is
@@ -54,17 +59,17 @@ We hold these principles:
    the clauses cite), and executed by a **generic performer that holds no
    rules of its own**. Any judgment a schedule requires — is this cached
    fact still fresh, should this delivery retry, is this field valid — is
-   a pure function of the schedule and the facts, and gets case law like
+   a pure function of the schedule and the facts, and gets precedents like
    any other term.
-10. **The docket is generated, never hand-written.** The prose contract
-    and the code are two renderings of one source. The code is the
-    source: its clauses, their docstrings and the case law (test names,
-    grouped by clause). The prose is generated from it, so it can never
-    drift from behavior. Prose that arrives first (for example from a
-    business person) is translated into code, then regenerated from the
-    code. It is not kept beside the code. Prose spec layers that do not
-    execute are a second contract over the same subject matter — and two
-    contracts is how disputes start.
+10. **The docket is the test listing, never hand-written prose.** There is
+    no prose contract file. The code is the source: party modules, named
+    constants, and the precedents. The human-readable spec is the
+    precedent listing (`pytest --collect-only -q`), grouped by party
+    module. It cannot drift from behavior, because it is the behavior.
+    Prose that arrives first (for example from a business person) is
+    translated into modules and precedents. It is not kept beside the
+    code. Prose spec layers that do not execute are a second contract over
+    the same subject matter — and two contracts is how disputes start.
 
 ---
 
@@ -110,11 +115,30 @@ rationale (the ADR, kept in the repo as the Article's amendment record).
 
 ## The contract, in Python
 
+**Layout.** A party's chapter is a module: `contract/<party>.py`. A
+procedure's chapter is a module too: `contract/refund_procedure.py`. The
+precedents mirror the modules, one file each. Rule values are named
+constants in the module that owns them.
+
+```
+contract/
+  definitions.py        the terms the clauses name
+  customer.py           what binds the Customer
+  merchant.py           what binds the Merchant
+  processor.py          what binds the payment processor
+  refund_procedure.py   the operative clause
+precedents/
+  test_customer.py  test_merchant.py  test_processor.py
+  test_refund_procedure.py
+  test_structure.py     structural precedents (worked in skill/EXAMPLE.md)
+```
+
 **Definitions.** The parties and terms the clauses need to name:
 
 ```python
+# contract/definitions.py
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 from enum import Enum
 
 
@@ -143,12 +167,6 @@ class RefundRequest:
 
 
 @dataclass(frozen=True)
-class RefundPolicy:
-    window: timedelta = timedelta(days=14)
-    restocking_fee_percent: int = 10
-
-
-@dataclass(frozen=True)
 class RefundDecision:
     approved: bool
     amount_cents: int = 0
@@ -156,101 +174,147 @@ class RefundDecision:
     reason: DenialReason | None = None
 ```
 
+**The party modules.** Each public function is a clause. Each rule value
+has a name (`RETURN_WINDOW_DAYS`). No docstring repeats the rule: the
+name, the constant and the precedents carry it.
+
+```python
+# contract/customer.py
+from datetime import timedelta
+
+from contract.definitions import Order, RefundRequest
+
+RETURN_WINDOW_DAYS = 14
+
+
+def refund_window_is_open(request: RefundRequest, order: Order) -> bool:
+    return request.requested_on <= order.delivered_on + timedelta(days=RETURN_WINDOW_DAYS)
+```
+
+```python
+# contract/processor.py
+from contract.definitions import Order
+
+
+def order_is_refundable(order: Order) -> bool:
+    return order.settled and order.delivered_on is not None
+```
+
+```python
+# contract/merchant.py
+from contract.definitions import Order, Party
+
+RESTOCKING_FEE_PERCENT = 10
+
+
+def refundable_amount(order: Order) -> int:
+    if order.damaged_on_arrival:
+        return order.total_cents
+    fee = order.total_cents * RESTOCKING_FEE_PERCENT // 100
+    return order.total_cents - fee
+
+
+def liable_party(order: Order) -> Party:
+    return Party.MERCHANT if order.damaged_on_arrival else Party.PROCESSOR
+```
+
 **The operative clause.** One interaction, one main function. Near-zero
 cyclomatic complexity; every line is an obligation with a readable name.
 It states *who owes what, when* — and nothing about *how*:
 
 ```python
-def settle_refund_request(
-    request: RefundRequest, order: Order, policy: RefundPolicy
-) -> RefundDecision:
-    """Clause 4 — Refunds. Pure: facts in, decision out."""
+# contract/refund_procedure.py
+from contract.customer import refund_window_is_open
+from contract.definitions import DenialReason, Order, RefundDecision, RefundRequest
+from contract.merchant import liable_party, refundable_amount
+from contract.processor import order_is_refundable
+
+
+def settle_refund_request(request: RefundRequest, order: Order) -> RefundDecision:
     if not order_is_refundable(order):
         return RefundDecision(approved=False, reason=DenialReason.ORDER_NOT_SETTLED)
-    if not refund_window_is_open(request, order, policy):
+    if not refund_window_is_open(request, order):
         return RefundDecision(approved=False, reason=DenialReason.WINDOW_CLOSED)
     return RefundDecision(
         approved=True,
-        amount_cents=refundable_amount(order, policy),
+        amount_cents=refundable_amount(order),
         paid_by=liable_party(order),
     )
 ```
 
-**The internals.** Same principle, one level down — but not abused. These
-bodies are already plainer than further names would be, so the splitting
-stops here:
+**Precedents.** Pure tests against the public clauses. Each name is a
+claim a party could bring; no mocks, no setup rituals — because the terms
+are pure. The `_private` helpers stay free to change. The test listing
+(`pytest --collect-only -q`) reads as the contract:
 
 ```python
-def order_is_refundable(order: Order) -> bool:
-    """Clause 4.1 — only settled, delivered orders may be refunded."""
-    return order.settled and order.delivered_on is not None
+# precedents/test_refund_procedure.py
+from datetime import date
+
+from contract.definitions import DenialReason, Order, Party, RefundRequest
+from contract.refund_procedure import settle_refund_request
 
 
-def refund_window_is_open(
-    request: RefundRequest, order: Order, policy: RefundPolicy
-) -> bool:
-    """Clause 4.2 — the window runs from delivery, not purchase."""
-    return request.requested_on <= order.delivered_on + policy.window
-
-
-def refundable_amount(order: Order, policy: RefundPolicy) -> int:
-    """Clause 4.3 — goods damaged on arrival refund in full;
-    otherwise the merchant withholds the restocking fee."""
-    if order.damaged_on_arrival:
-        return order.total_cents
-    fee = order.total_cents * policy.restocking_fee_percent // 100
-    return order.total_cents - fee
-
-
-def liable_party(order: Order) -> Party:
-    """Clause 4.4 — the merchant bears damage; the processor bears the rest."""
-    return Party.MERCHANT if order.damaged_on_arrival else Party.PROCESSOR
-```
-
-**Case law.** Pure tests against the top-level clause. Each name is a claim
-a party could bring; no mocks, no setup rituals — because the terms are
-pure. These tests pin the *contract*, so the internals can be redrafted
-freely as long as the rulings stand:
-
-```python
 def test_customer_may_return_damaged_goods_for_a_full_refund():
+    # Facts
     order = Order(total_cents=10_000, settled=True,
                   delivered_on=date(2026, 7, 1), damaged_on_arrival=True)
-    decision = settle_refund_request(
-        RefundRequest(requested_on=date(2026, 7, 5)), order, RefundPolicy()
-    )
+    # Claim
+    decision = settle_refund_request(RefundRequest(requested_on=date(2026, 7, 5)), order)
+    # Ruling
     assert decision.approved
     assert decision.amount_cents == 10_000
     assert decision.paid_by is Party.MERCHANT
 
 
-def test_undamaged_returns_bear_the_restocking_fee():
+def test_a_late_request_is_denied_because_the_window_closed():
     order = Order(total_cents=10_000, settled=True,
                   delivered_on=date(2026, 7, 1), damaged_on_arrival=False)
-    decision = settle_refund_request(
-        RefundRequest(requested_on=date(2026, 7, 5)), order, RefundPolicy()
-    )
-    assert decision.approved and decision.amount_cents == 9_000
-
-
-def test_the_window_runs_from_delivery_and_then_closes():
-    order = Order(total_cents=10_000, settled=True,
-                  delivered_on=date(2026, 7, 1), damaged_on_arrival=False)
-    late = RefundRequest(requested_on=date(2026, 7, 16))
-    decision = settle_refund_request(late, order, RefundPolicy())
+    decision = settle_refund_request(RefundRequest(requested_on=date(2026, 7, 16)), order)
     assert not decision.approved
     assert decision.reason is DenialReason.WINDOW_CLOSED
 ```
 
+```python
+# precedents/test_merchant.py
+from datetime import date
+
+from contract.definitions import Order, Party
+from contract.merchant import liable_party, refundable_amount
+
+
+def an_order(damaged: bool) -> Order:
+    return Order(total_cents=10_000, settled=True,
+                 delivered_on=date(2026, 7, 1), damaged_on_arrival=damaged)
+
+
+def test_merchant_withholds_the_restocking_fee_on_an_undamaged_return():
+    assert refundable_amount(an_order(damaged=False)) == 9_000
+
+
+def test_merchant_refunds_damaged_goods_in_full():
+    assert refundable_amount(an_order(damaged=True)) == 10_000
+
+
+def test_merchant_bears_damage_and_the_processor_bears_the_rest():
+    assert liable_party(an_order(damaged=True)) is Party.MERCHANT
+    assert liable_party(an_order(damaged=False)) is Party.PROCESSOR
+```
+
+Short files for `test_customer.py` and `test_processor.py` follow the same
+shape. The structural precedents in `test_structure.py` fail the build if
+a party module binds nobody, or if a clause has no precedent.
+
 **Execution of the contract.** Side effects live at the boundary, after the
 decision. The performer gathers facts (impure), consults the terms (pure),
-then performs. It never re-interprets the terms:
+then performs. It may dispatch on a field of the decision. It never
+re-interprets the terms:
 
 ```python
 def handle_refund_endpoint(order_id: str, request: RefundRequest) -> None:
     order = orders_repo.load(order_id)                    # gather facts
-    decision = settle_refund_request(request, order, current_policy())  # consult terms
-    if decision.approved:                                  # perform
+    decision = settle_refund_request(request, order)      # consult terms
+    if decision.approved:                                 # perform
         payments.credit(order_id, decision.amount_cents, from_=decision.paid_by)
     notifications.send_refund_outcome(order_id, decision)
 ```
@@ -284,22 +348,23 @@ human or machine, can rely on it.**
 
 ---
 
-# Part II — The convention: Case-Law Testing (CaC/CL-1)
+# Part II — The convention: Precedent Testing (CaC/CL-1)
 
-Principle 5 hardened into enforceable convention. This is also the answer
-to Gherkin: the specification layer BDD tools externalize into prose is
-internalized here — the operative clause is the readable spec, the case
-law is the executable scenarios, and the docket is the generated
+Principle 5 hardened into enforceable convention. The ID stays
+`CaC/CL-1`: CL stands for case law, the legal word for precedents. This is also the
+answer to Gherkin: the specification layer BDD tools externalize into
+prose is internalized here — the operative clause is the readable spec,
+the precedents are the executable scenarios, and the docket is the
 stakeholder view. Gherkin needs three artifacts per rule (.feature prose
 that cannot execute, regex step glue, real code) and the prose can
-silently drift; case law needs one artifact that fails the build if it
+silently drift; precedents need one artifact that fails the build if it
 lies.
 
-Seven rules, each mechanically checkable:
+Eight rules, each mechanically checkable:
 
-1. **One file per clause.** `case_law/test_clause_4_refunds.py` pins
-   Clause 4 and nothing else. The docket mirrors the contract's table of
-   contents.
+1. **One file per party or procedure.** `precedents/test_merchant.py` pins
+   `contract/merchant.py` and nothing else. The docket mirrors the modules,
+   so it mirrors the parties.
 2. **The test name is a claim a party could bring**, written as a full
    sentence in snake_case:
    `test_customer_may_return_damaged_goods_for_a_full_refund`. If it
@@ -307,35 +372,41 @@ Seven rules, each mechanically checkable:
    ≥ 6 words, contains a party noun.)
 3. **Facts / Claim / Ruling structure**, in that order, comment-marked.
    Given/When/Then without the DSL: facts are constructed from the
-   Definitions, the claim is one call to the operative clause, the ruling
-   is plain asserts.
-4. **Sue at the highest court.** Case law calls only top-level clauses,
-   never the internals. Internals stay redraftable as long as rulings
-   stand. (Lintable: an import allowlist per case-law file.)
-5. **No mocks in case law.** A mock in a case-law test is proof the terms
+   Definitions, the claim is one call to a clause, the ruling is plain
+   asserts.
+4. **Cite public clauses, never private helpers.** Precedents call public
+   functions of the contract modules. A helper with a leading underscore
+   is internal and stays redraftable as long as the rulings stand.
+   (Lintable: no `_name` imports in `precedents/`.)
+5. **No mocks in precedents.** A mock in a precedent is proof the terms
    are not pure — fix the contract, not the test. Mocks are permitted
    only in thin execution-layer tests at the boundary.
 6. **Precedent is append-mostly.** Amending a clause may change a ruling,
-   and the diff must show both together: the clause edit and the case-law
-   edit in one commit. Deleting a case without amending a clause is
+   and the diff must show both together: the clause edit and the precedent
+   edit in one commit. Deleting a precedent without amending a clause is
    overruling without authority — blocked in review.
 7. **The docket is the stakeholder document.** Generate the
-   human-readable spec *from* the case law
-   (`pytest --collect-only -q case_law/`), never the other way around.
+   human-readable spec *from* the precedents
+   (`pytest --collect-only -q precedents/`), never the other way around.
    Gherkin's one genuine benefit, recovered at zero drift.
+8. **Structure is itself precedent.** What a document would only state,
+   a test enforces. Every party module holds at least one clause
+   (`test_every_party_module_has_at_least_one_clause`). Every clause is
+   cited by some precedent (`test_every_clause_is_cited_by_some_precedent`).
+   Both run on `ast`, `inspect` and `importlib` only. A reference
+   implementation is in [`skill/EXAMPLE.md`](../skill/EXAMPLE.md).
 
-A case-law test, in full:
+A precedent, in full:
 
 ```python
-# case_law/test_clause_4_refunds.py
+# precedents/test_refund_procedure.py
 def test_customer_may_return_damaged_goods_for_a_full_refund():
     # Facts — the Definitions, cited by type, not by regex
     order = Order(total_cents=10_000, settled=True,
                   delivered_on=date(2026, 7, 1), damaged_on_arrival=True)
 
     # Claim — settled by the operative clause, nothing lower
-    decision = settle_refund_request(
-        RefundRequest(requested_on=date(2026, 7, 5)), order, RefundPolicy())
+    decision = settle_refund_request(RefundRequest(requested_on=date(2026, 7, 5)), order)
 
     # Ruling
     assert decision.approved
@@ -343,7 +414,7 @@ def test_customer_may_return_damaged_goods_for_a_full_refund():
     assert decision.paid_by is Party.MERCHANT
 ```
 
-Two more dispute-test questions, for case law:
+Two more dispute-test questions, for precedents:
 
 - *Does every claim have standing?* A test no party would ever cite is
   not precedent — it is coverage theater. Delete it or promote it.
@@ -356,16 +427,18 @@ Two more dispute-test questions, for case law:
 # Part III — The full cycle (principle 8, worked)
 
 The endpoint is the **performer**: gather → consult → perform, near-zero
-branching. It contains no business rule — not even `if decision.approved`;
-whether an approval pays out is a term of performance and lives in step 3.
+branching. It contains no business rule. It may dispatch on a field of the
+decision: `if decision.approved: payments.credit(...)`. Whether an approval
+pays out is a term of performance, and that one `if` lives in step 3. The
+performer never re-derives a rule, such as the window or the fee, from the
+facts.
 
 ```python
 # app/refunds/endpoint.py — the performer. Impure, and proud of it.
 @app.post("/orders/{order_id}/refund-requests")
 def handle_refund_request(order_id: OrderId, body: RefundRequestBody) -> RefundOutcomeBody:
     facts = gather_refund_facts(order_id, body)             # step 1 — impure reads
-    decision = settle_refund_request(                       # step 2 — pure terms
-        facts.request, facts.order, facts.policy)
+    decision = settle_refund_request(facts.request, facts.order)  # step 2 — pure terms
     receipt = perform_refund_decision(order_id, decision)   # step 3 — impure writes
     return RefundOutcomeBody.from_decision(decision, receipt)
 ```
@@ -378,17 +451,15 @@ happens here and only here — the terms never see a raw dict or ORM object:
 # app/refunds/facts.py — evidence gathering. Impure reads, no rulings.
 @dataclass(frozen=True)
 class RefundFacts:
-    """The evidence file: every Definition Clause 4 will cite."""
+    """The evidence file: every Definition the refund clauses will cite."""
     request: RefundRequest
     order: Order
-    policy: RefundPolicy
 
 
 def gather_refund_facts(order_id: OrderId, body: RefundRequestBody) -> RefundFacts:
     return RefundFacts(
         request=body.as_refund_request(),      # HTTP → Definitions
         order=orders_repo.load(order_id),      # DB row → Order
-        policy=policies_repo.current(),        # config → RefundPolicy
     )
 ```
 
@@ -400,7 +471,7 @@ the decision's Definition is defective:
 ```python
 # app/refunds/perform.py — performance of the contract.
 def perform_refund_decision(order_id: OrderId, decision: RefundDecision) -> Receipt:
-    """Execute Clause 4's decision at the boundary."""
+    """Execute the refund decision at the boundary."""
     if decision.approved:
         receipt = payments.credit(order_id, decision.amount_cents,
                                   from_=decision.paid_by)
@@ -411,10 +482,10 @@ def perform_refund_decision(order_id: OrderId, decision: RefundDecision) -> Rece
     return receipt
 ```
 
-Testing policy per layer: the clause gets the full docket; gathering and
+Testing policy per layer: the clauses get the full docket; gathering and
 performing get thin execution-layer tests where mocks are permitted (rule
 5); the endpoint needs at most one wiring test — with three lines and no
-branches there is almost nothing left to get wrong.
+rules there is almost nothing left to get wrong.
 
 ---
 
@@ -425,7 +496,7 @@ Every internal concern decomposes into the same three parts:
 1. **Terms** — a frozen dataclass (or `as const` object) declaring the
    obligation, living next to the Definitions, cited by name.
 2. **Rulings** — every judgment the terms require is a pure function of
-   the terms and the facts. This is where the case law attaches.
+   the terms and the facts. This is where the precedents attach.
 3. **A generic performer** — one piece of machinery per concern, written
    once, holding zero business decisions.
 
@@ -521,7 +592,7 @@ and knows none.
 ```ts
 // schedules/refundRequestForm.ts — Schedule F-1. The offer, declared.
 export const refundRequestForm = {
-  clause: "4",
+  clause: "refund_procedure",
   fields: [
     { name: "requestedOn", label: "Date of request", kind: "date",
       required: true, rules: [requestedOnMayNotBeInTheFuture] },
@@ -538,14 +609,14 @@ export const refundRequestForm = {
   ],
 } satisfies FormTerms<Values>;
 
-// Named, pure validation rule — case law runs in vitest with no DOM:
+// Named, pure validation rule — precedents run in vitest with no DOM:
 export function requestedOnMayNotBeInTheFuture(value: string, today: string): Grievance | null {
   return value > today
     ? { field: "requestedOn", says: "The request date cannot be in the future." }
     : null;
 }
 
-test("the form tenders exactly what Clause 4's endpoint is owed", () => {
+test("the form tenders exactly what the refund endpoint is owed", () => {
   const body = refundRequestForm.actions[0].call.payload({
     requestedOn: "2026-08-05", reason: "damaged_on_arrival" });
   expect(body).toEqual({ requested_on: "2026-08-05", damaged_on_arrival: true });
@@ -567,13 +638,13 @@ class InvocationTerms:
     clause: str
     parties: frozenset[Role]
 
-REQUEST_REFUND = InvocationTerms(clause="4",
+REQUEST_REFUND = InvocationTerms(clause="refund_procedure",
                                  parties=frozenset({Role.CUSTOMER, Role.SUPPORT}))
 
 def may_invoke(actor: Actor, terms: InvocationTerms) -> Allowed | Denied:
     if actor.role in terms.parties:
         return Allowed()
-    return Denied(reason=f"{actor.role.value} is not party to clause {terms.clause}")
+    return Denied(reason=f"{actor.role.value} is not party to {terms.clause}")
 
 def test_a_courier_has_no_standing_to_request_a_refund():
     assert isinstance(may_invoke(Actor(role=Role.COURIER), REQUEST_REFUND), Denied)
@@ -734,7 +805,7 @@ def test_six_escalations_in_an_hour_raises_an_alert():
 ## Schedule L — Copy & locale
 
 User-facing prose is the part of the contract the customer actually
-reads. The case law is exhaustive over the Definitions, so a new denial
+reads. The precedents are exhaustive over the Definitions, so a new denial
 reason without copy fails the build in every locale at once.
 
 ```python
@@ -775,7 +846,7 @@ class RecordTerms:
     table: str
     columns: dict[str, str]        # field → column
     indexes: tuple[str, ...]
-    owner: str                     # must agree with Article III
+    owner: str                     # must agree with ARTICLE_III
 
 ORDER_RECORD = RecordTerms(
     definition=Order, table="orders",
@@ -805,7 +876,7 @@ def test_the_live_orders_table_holds_nothing_undeclared():
 **Migrations are three-part amendments.** A migration is never a
 standalone SQL file: the diff must show the Definition amendment, the
 record-terms amendment, and the migration that performs it — in one
-commit, with the case law that motivated the change. CI rejects any one
+commit, with the precedents that motivated the change. CI rejects any one
 without the other two.
 
 The counter-test for models: a column whose Definition field no clause
@@ -819,14 +890,17 @@ Schedule T will ask awkward questions about it; better to strike it.
 Schedules govern one concern each. Architecture is the **governing-law
 section** — terms that bind every clause at once: which layers exist and
 who may import whom; what is synchronous and what deferred; where state
-may live; what is one deployable. Under CaC these are **Articles**:
-declared, enforced, amended only with a recorded rationale.
+may live; what is one deployable. Under CaC these are the **Articles**. This is
+the only use of the word: Articles are architecture law (layers,
+boundaries, ownership). Party chapters are modules, not Articles. Articles are
+declared, enforced as precedents over the import graph, and amended only
+with a recorded rationale.
 
 ```python
 # articles/governing_law.py — binds every clause in the program.
 @dataclass(frozen=True)
 class LayeringTerms:
-    """Article I — who may cite whom. Lower layers never import upward."""
+    """Who may cite whom. Lower layers never import upward."""
     order: tuple[str, ...]
 
 ARTICLE_I = LayeringTerms(order=(
@@ -840,7 +914,7 @@ ARTICLE_I = LayeringTerms(order=(
 
 @dataclass(frozen=True)
 class BoundaryTerms:
-    """Article II — what is one deployable, and what crosses between them."""
+    """What is one deployable, and what crosses between them."""
     deployable: str
     may_call: tuple[str, ...]        # other deployables, by contract only
     crossing: str                    # "http" | "queue" — never a shared DB
@@ -851,7 +925,7 @@ ARTICLE_II = (BoundaryTerms("storefront", may_call=("payments",), crossing="http
 
 @dataclass(frozen=True)
 class StateTerms:
-    """Article III — where truth lives. One owner per fact; all else is cache."""
+    """Where truth lives. One owner per fact; all else is cache."""
     fact: str
     owner: str
 
@@ -860,7 +934,7 @@ ARTICLE_III = (StateTerms("orders", owner="storefront.db"),
 ```
 
 Articles are enforced, not aspirational — an import graph is just data,
-so the architecture check is ordinary case law run in CI (import-linter
+so the architecture check is ordinary precedent run in CI (import-linter
 and friends are mere machinery):
 
 ```python
@@ -877,7 +951,7 @@ def test_no_clause_may_cite_a_performer():
 
 **ADRs are amendment records** — in the repo, adjacent to the terms they
 amend. The diff that changes an Article must carry its recital (why),
-the operative change, and the case law it creates or overrules; CI
+the operative change, and the precedents it creates or overrules; CI
 blocks an Article edit without one:
 
 ```
@@ -892,7 +966,7 @@ Operative change: storefront → payments crossing amended
 "http" → "queue", under Schedule D terms CAPTURE_PAYMENT
 (attempts_owed=5, escalate_after=15min).
 
-Case law affected:
+Precedents affected:
   - test_checkout_completes_without_awaiting_capture  (new)
   - test_capture_breach_pages_the_merchant            (new)
   - test_checkout_returns_the_captured_receipt        (overruled)
@@ -908,14 +982,15 @@ actually made yet.
 
 # Part VI — Adoption order
 
-1. Move existing pure tests into `case_law/`, one file per clause;
-   rename to claim sentences.
+1. Move existing pure tests into `precedents/`, one file per party or
+   procedure module (`precedents/test_<party>.py`); rename to claim
+   sentences.
 2. Add the Facts / Claim / Ruling comments; delete any mock from a
-   case-law file by purifying the term it was covering.
-3. Ship the lint plugin for convention rules 1–5 and the CI diff check
-   for rule 6.
+   precedent by purifying the term it was covering.
+3. Add the structural precedents (convention rule 8), the lint plugin for
+   rules 1–5 and the CI diff check for rule 6.
 4. Wire the docket command into CI output so every build prints the
-   current case law — that artifact replaces any .feature file you would
+   current precedents — that artifact replaces any .feature file you would
    have written.
 5. Extract schedules as you touch them: each scattered TTL, retry
    decorator, permission check or hand-built form becomes a declared
@@ -924,7 +999,7 @@ actually made yet.
 
 The closing dispute test for the internals: an internal concern is
 drafted correctly when the obligation is a schedule you could amend in
-one line, the judgment is a pure ruling with case law, and the machinery
+one line, the judgment is a pure ruling with precedents, and the machinery
 is a generic performer that would work unchanged for any other schedule
 of its kind. If changing a TTL, a retry count, or a form field touches
 machinery, the schedule has leaked; if the machinery makes a decision the

@@ -8,47 +8,38 @@ description: Draft or review business-logic code as a legal contract between its
 Code is a **contract** between its parties — the customer, the business, the
 next developer, the on-call engineer at 3am — that a machine happens to
 execute. Draft it the way a careful lawyer drafts a contract: parties
-first, then clauses stating what binds each of them, then case law that
-settles disputes.
+first, then clauses stating what binds each of them, then precedents (in legal
+terms: case law) that settle disputes.
 
-## One source, two renderings
+## One source: modules and precedents
 
-Code and prose contract are two renderings of one source. Keep only one
-source. **The code is the source.** The prose is generated from it.
+The code is the only source. There is no `CONTRACT.md` and no prose copy.
+No rule text lives in a docstring or a comment that a test cannot check.
+Everything that can be enforced is enforced by a test.
 
-The source has three parts:
-
-- **Clauses.** Each clause is a named function. Its docstring cites its
-  article and clause (e.g. "Clause 2.1 — Article II §1") and states the
-  clause text in plain language a non-engineer party can read.
-- **Parties.** The party list, with the duties of each party.
-- **Case law.** Test names, written as claims a party could dispute.
-
-**`CONTRACT.md` is generated, never hand-edited.** It has Articles per
-party (Article I — Customer, Article II — System, ...) and Articles per
-procedure (e.g. "Article IV — Escalation Procedure"). No generator tool
-exists yet. Render it from what exists:
-
-- Clause docstrings give the clause text.
-- `pytest --collect-only -q` over the case law, grouped by clause, gives
-  the docket.
-
-Start the file with this line: "Generated from code; edit the code, not
-this file." To change the contract, change the code and generate the file
-again. Never edit `CONTRACT.md` and the code in parallel. Two contracts is
-how disputes start.
+- **A party's chapter is a module:** `contract/<party>.py`. A procedure
+  has one too: `contract/refund_procedure.py`. Each public function is a
+  clause. A private helper (`_name`) is not.
+- **Rule values are named constants** in the module that owns them
+  (`RETURN_WINDOW_DAYS = 30`).
+- **Claims are test names.** A claim a docstring would make becomes a
+  precedent, in `precedents/test_<party>.py`.
+- **The spec is the test listing:** `pytest --collect-only -q`, grouped by
+  party module.
+- **Structure is enforced by tests too.** Every party module has at least
+  one clause. Every public clause is called by some precedent. A stdlib
+  reference implementation is in [EXAMPLE.md](EXAMPLE.md).
 
 **Prose given as input.** A business person can give you a prose contract.
-Translate it into code: parties, clauses, docstrings, case law. Then
-regenerate the prose from the code. Do not keep the original prose beside
-the code as a second source.
+Translate it into modules, constants and precedents. Do not keep the prose
+beside the code as a second source.
 
-If asked only for code, still cite article and clause in each docstring.
-If asked for "the contract", render `CONTRACT.md` from the code. See
-[EXAMPLE.md](EXAMPLE.md) for a generated `CONTRACT.md` excerpt with its
-code.
+If asked for "the contract", show the module list and the test listing.
 
-## The clauses
+A short, agent-ready version of this skill is in
+[`code-as-contract-lean.md`](../code-as-contract-lean.md).
+
+## The rules
 
 1. **Parties come first.** Before any type or function, list every party
    named or implied in the brief, and for each one its duties and what it
@@ -69,6 +60,7 @@ code.
    opening ceremony.
 2. **Every business rule has a name.** A rule that exists only as an inline
    `if` is an unwritten verbal agreement — unenforceable and disputed later.
+   Rule values are named constants (`RETURN_WINDOW_DAYS = 30`).
    Rules come in two shapes — don't collapse one into the other:
    - **Decision clauses**: `facts in → decision out` (e.g. approve/deny,
      price, route).
@@ -84,22 +76,25 @@ code.
 4. **Terms are pure; execution is separate.** Deciding *what the contract
    says* is a pure function of facts in, decision out. *Performing* the
    contract (charging cards, writing rows, sending mail) happens at the
-   edges, after the decision, and never re-interprets the terms.
-5. **Tests are case law.** Each pure unit test is a scenario a party could
-   dispute, named as a claim, settled by the top-level clause — no mocks, no
-   setup rituals, because the terms are pure.
+   edges, after the decision. The performer may dispatch on a field of the
+   decision (`if decision.approved: ...`). It never re-derives or
+   re-interprets a rule.
+5. **Tests are precedents.** Each pure unit test is a scenario a party could
+   dispute, named as a claim, settled by a public clause — no mocks, no
+   setup rituals, because the terms are pure. One file per party module:
+   `precedents/test_<party>.py`.
 6. **The principle applies recursively — without abuse.** Internals follow
    the same discipline one level down, but splitting stops when a function's
    body is already plainer than another name would be. A contract drowning
    in cross-references is as bad as one long run-on clause.
 7. **Changes are amendments.** A behavior change must be legible as an
-   amendment: the diff shows which clause changed and which case law (tests)
-   now rules differently.
+   amendment: the diff shows which clause changed and which precedents (tests)
+   now rule differently.
 
-For a worked example applying these clauses to a refund policy — decision
-clauses only, definitions, operative clause, internals, case-law tests, and
-the execution boundary — see [EXAMPLE.md](EXAMPLE.md). For a worked example
-with multiple parties including a non-human obligated party and
+For a worked example applying these rules to a refund policy — party
+modules, definitions, operative clause, precedents, structural precedents
+and the execution boundary — see [EXAMPLE.md](EXAMPLE.md). For a worked
+example with multiple parties including a non-human obligated party and
 obligation-shaped clauses, see the second example in the same file.
 
 ## Before presenting a draft
@@ -132,7 +127,7 @@ existing code already honors the contract:
 
 ## The counter-test
 
-So clause 6 is not abused: *does this function exist to name a rule, or
+So rule 6 is not abused: *does this function exist to name a rule, or
 only to make a metric happy?* A helper no party would ever cite in a
 dispute is not a clause — inline it.
 
@@ -144,9 +139,9 @@ by claim, and amended without litigation.
 This skill is the working summary. The complete text ships alongside it in
 `pattern/`:
 
-- `pattern/pattern.md` — the pattern: principles, schedules, articles, case law.
+- `pattern/pattern.md` — the pattern: principles, schedules, Articles (architecture law), precedents.
 - `pattern/papers/schedules.html` — companion paper: schedules and the internals, worked through.
-- `pattern/papers/vs-gherkin.html` — companion paper: why case law replaces a Gherkin layer.
+- `pattern/papers/vs-gherkin.html` — companion paper: why precedents replace a Gherkin layer.
 
-Read the pattern (its case-law convention and worked disputes) when a clause
+Read the pattern (its precedent convention and worked disputes) when a clause
 is contested and the summary above does not settle it.
