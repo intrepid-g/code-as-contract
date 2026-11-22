@@ -223,7 +223,7 @@
 
     <span class="c"># Claim — settled by the operative clause, nothing lower</span>
     decision = settle_refund_request(
-        RefundRequest(requested_on=date(<span class="s">2026, 7, 5</span>)), order, RefundPolicy())
+        RefundRequest(requested_on=date(<span class="s">2026, 7, 5</span>)), order)
 
     <span class="c"># Ruling</span>
     <span class="k">assert</span> decision.approved
@@ -235,14 +235,14 @@
         <p class="pane-note">What both drafts try to specify. Note the contract already reads like the
         Gherkin — because the operative clause has no cyclomatic complexity to hide behind. That is why
         the prose layer is redundant.</p>
-<pre><span class="k">def</span> settle_refund_request(request, order, policy) -> RefundDecision:
-    <span class="s">"""Clause 4 — Refunds. Pure: facts in, decision out."""</span>
+<pre><span class="c"># contract/refund_procedure.py — pure: facts in, decision out.</span>
+<span class="k">def</span> settle_refund_request(request, order) -> RefundDecision:
     <span class="k">if not</span> order_is_refundable(order):
         <span class="k">return</span> RefundDecision(approved=<span class="k">False</span>, reason=DenialReason.ORDER_NOT_SETTLED)
-    <span class="k">if not</span> refund_window_is_open(request, order, policy):
+    <span class="k">if not</span> refund_window_is_open(request, order):
         <span class="k">return</span> RefundDecision(approved=<span class="k">False</span>, reason=DenialReason.WINDOW_CLOSED)
     <span class="k">return</span> RefundDecision(approved=<span class="k">True</span>,
-                          amount_cents=refundable_amount(order, policy),
+                          amount_cents=refundable_amount(order),
                           paid_by=liable_party(order))</pre>
       </div>
     </div>
@@ -269,8 +269,8 @@
 <span class="k">@app.post</span>(<span class="s">"/orders/{order_id}/refund-requests"</span>)
 <span class="k">def</span> handle_refund_request(order_id: OrderId, body: RefundRequestBody) -> RefundOutcomeBody:
     facts = gather_refund_facts(order_id, body)          <span class="c"># step 1 — impure reads</span>
-    decision = settle_refund_request(                    <span class="c"># step 2 — pure terms (Clause 4)</span>
-        facts.request, facts.order, facts.policy)
+    decision = settle_refund_request(                    <span class="c"># step 2 — pure terms</span>
+        facts.request, facts.order)
     receipt = perform_refund_decision(order_id, decision) <span class="c"># step 3 — impure writes</span>
     <span class="k">return</span> RefundOutcomeBody.from_decision(decision, receipt)</pre>
       </div>
@@ -283,10 +283,9 @@
 <pre><span class="c"># app/refunds/facts.py — evidence gathering. Impure reads, no rulings.</span>
 <span class="k">@dataclass</span>(frozen=<span class="k">True</span>)
 <span class="k">class</span> RefundFacts:
-    <span class="s">"""The evidence file: every Definition Clause 4 will cite."""</span>
+    <span class="s">"""The evidence file: every Definition the procedure will cite."""</span>
     request: RefundRequest
     order: Order
-    policy: RefundPolicy
 
 
 <span class="k">def</span> gather_refund_facts(order_id: OrderId, body: RefundRequestBody) -> RefundFacts:
@@ -295,7 +294,6 @@
     <span class="k">return</span> RefundFacts(
         request=body.as_refund_request(),      <span class="c"># HTTP → Definitions</span>
         order=orders_repo.load(order_id),      <span class="c"># DB row → Order</span>
-        policy=policies_repo.current(),        <span class="c"># config → RefundPolicy</span>
     )</pre>
       </div>
 
@@ -307,7 +305,6 @@
 <pre><span class="c"># app/refunds/perform.py — performance of the contract. Impure writes,</span>
 <span class="c"># executed exactly as decided; the decision is never second-guessed.</span>
 <span class="k">def</span> perform_refund_decision(order_id: OrderId, decision: RefundDecision) -> Receipt:
-    <span class="s">"""Execute Clause 4's decision at the boundary."""</span>
     <span class="k">if</span> decision.approved:
         receipt = payments.credit(order_id, decision.amount_cents,
                                   from_=decision.paid_by)

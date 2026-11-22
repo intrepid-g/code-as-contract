@@ -2,9 +2,15 @@
 
 Versions refer to the pattern (`pattern/`). Each released version has a git tag `pattern-vX.Y.Z`. Tags before 0.2.1 are named `manifesto-vX.Y.Z` and their paths are under `manifesto/`.
 
-## 0.4.0 — in progress
+## Unreleased
+Planned (agent-native documentation):
+- An agent entry point (`/agent`) and `llms.txt` index on the site.
+- Versioned, normative spec with stable requirement IDs, valid/invalid examples and conformance tests.
+- A machine-readable spec and a validator, so an agent can check its own output.
+- An installable skill pointing at the versioned spec.
+
+## 0.4.0 — 2026-11-22
 - Principle 1 is now "There are more parties than you first think": explicit parties (user, admin) and implicit parties (frontend, cache, database, subsystems). The duty list is scratch work; each duty becomes a constant, a clause and a precedent.
-Done:
 - No untested text. Rule text and clause citations leave docstrings. A party's chapter is a module (`contract/<party>.py`; procedures too, e.g. `contract/refund_procedure.py`). Rule values are named constants (`RETURN_WINDOW_DAYS = 30`). Claims a docstring made are now test names.
 - `CONTRACT.md` is dropped. The human-readable spec is the test listing (`pytest --collect-only -q`), grouped by party module.
 - Tests are now "precedents" (in legal terms: case law). Files are `precedents/test_<party>.py` (was `case_law/test_clause_<n>_<name>.py`). The convention ID `CaC/CL-1` is unchanged (CL = case law). "Ruling" keeps its meanings (the pure function a schedule consults; the assert step).
@@ -13,15 +19,8 @@ Done:
 - Structural precedents replace the prose duties: `test_every_party_module_has_at_least_one_clause` and `test_every_clause_is_cited_by_some_precedent`, with a stdlib reference implementation in `skill/EXAMPLE.md`. New convention rule 8.
 - Principle 10 is now "The docket is the test listing, never hand-written prose."
 - `code-as-contract-lean.md`: an agent-ready distillation of the skill (about 800 tokens).
-
-Not done yet (agent-native documentation):
-- An agent entry point (`/agent`) and `llms.txt` index on the site.
-- Versioned, normative spec with stable requirement IDs, valid/invalid examples and conformance tests.
-- A machine-readable spec and a validator, so an agent can check its own output.
-- An installable skill pointing at the versioned spec.
-
-Known stale (to fix before release):
-- `pattern/papers/vs-gherkin.html` and `pattern/papers/schedules.html` code samples still show docstrings that cite clauses ("Clause 4 — ..."), `RefundPolicy`, and `articles/` file names. Their terminology is updated.
+- `pattern/papers/vs-gherkin.html` code samples follow 0.4.0: no clause-citing docstrings, no `RefundPolicy`.
+- MIT license.
 
 ## 0.3.0
 Superseded in 0.4.0: the idea of a generated `CONTRACT.md` is dropped. The code is still the source. The spec is now the test listing.

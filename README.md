@@ -71,3 +71,7 @@ in aitoolkit.
 - Untangling a conditional-heavy function that decides something (pricing, eligibility, refunds, access, payouts)
 - Reviewing code for whether a rule can be named and cited
 - Separating decision logic from side effects (DB writes, API calls, emails)
+
+## License
+
+[MIT](LICENSE).
