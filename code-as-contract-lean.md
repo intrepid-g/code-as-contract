@@ -3,7 +3,7 @@
 Business logic is a contract. Parties are modules. Rules are named clauses. Tests are precedents (in legal terms: case law).
 
 ## Rules
-1. List every party and its duties first: people and system actors (DB, queue, cache, gateway, scheduler, LLM). Each gets `contract/<party>.py` with at least one clause that binds it.
+1. There are more parties than you first think. Explicit: user, admin. Implicit: frontend, DB, queue, cache, gateway, scheduler, LLM, each subsystem. Write each one's duties (promises, e.g. "cache ≤ 60 s stale") as scratch notes; turn every duty into a named constant + clause + precedent, then delete the notes. Each party gets `contract/<party>.py` with at least one clause that binds it.
 2. A clause is a public pure function. Decision: facts in, decision out. Obligation: party + trigger or deadline in, "is it due" out. Pass `now` in. No I/O.
 3. Every rule value is a named constant. No bare literal, no unnamed inline `if`. Helpers no party would cite are `_private`.
 4. A procedure is a module: `contract/<name>_procedure.py`. Its operative function only calls clauses and returns a frozen decision.

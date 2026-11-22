@@ -3,6 +3,7 @@
 Versions refer to the pattern (`pattern/`). Each released version has a git tag `pattern-vX.Y.Z`. Tags before 0.2.1 are named `manifesto-vX.Y.Z` and their paths are under `manifesto/`.
 
 ## 0.4.0 — in progress
+- Principle 1 is now "There are more parties than you first think": explicit parties (user, admin) and implicit parties (frontend, cache, database, subsystems). The duty list is scratch work; each duty becomes a constant, a clause and a precedent.
 Done:
 - No untested text. Rule text and clause citations leave docstrings. A party's chapter is a module (`contract/<party>.py`; procedures too, e.g. `contract/refund_procedure.py`). Rule values are named constants (`RETURN_WINDOW_DAYS = 30`). Claims a docstring made are now test names.
 - `CONTRACT.md` is dropped. The human-readable spec is the test listing (`pytest --collect-only -q`), grouped by party module.

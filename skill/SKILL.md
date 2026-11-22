@@ -41,19 +41,21 @@ A short, agent-ready version of this skill is in
 
 ## The rules
 
-1. **Parties come first.** Before any type or function, list every party
-   named or implied in the brief, and for each one its duties and what it
-   may rely on from the others. Parties go beyond the obvious humans
-   (customer, business, next dev, on-call): internal system actors are
-   parties too. Examples: the database (guarantees uniqueness, never holds
-   an order without a customer), the payment gateway (confirms or declines
+1. **There are more parties than you first think.** Before any type or
+   function, list every party with its duties (the promises it makes) and
+   what it may rely on from the others. Explicit parties are the actors
+   everyone names (user, admin, business, next dev, on-call). Implicit
+   parties are the parts of the system: the frontend, the database
+   (guarantees uniqueness), the payment gateway (confirms or declines
    within N seconds), the job queue (delivers at-least-once, so consumers
-   must be idempotent), the cache (may be stale up to its TTL), the
+   must be idempotent), the cache (never more than its TTL stale), the
    scheduler (runs the reminder sweep daily), an LLM/agent (returns valid
-   JSON or is retried), the audit log (records every refund). If it gates,
-   reminds, generates, enforces or guarantees something, that's a duty,
-   not infrastructure. Each party must get at least one clause that binds
-   *it*, not just clauses that consume its output.
+   JSON or is retried), the audit log (records every refund), each
+   subsystem. If it gates, reminds, generates, enforces or guarantees
+   something, that's a duty, not infrastructure. The duty list is scratch
+   work: each duty becomes a named constant, a clause and a precedent, and
+   then the list is dropped. Each party must get at least one clause that binds
+*it*, not just clauses that consume its output.
 
    Definitions (dataclasses, enums) serve the clauses: declare a type when
    a clause needs to name a party, an amount or a deadline, not as an

@@ -15,13 +15,16 @@ clauses, not to open the document.
 
 We hold these principles:
 
-1. **Parties come first.** Before any type or function, list every party —
-   people, and internal system actors too (the database, queue, cache,
-   scheduler, an LLM) — with its duties and what it may rely on from the
-   others. A party's chapter is a module, `contract/<party>.py`, and each
-   party module holds at least one clause that binds that party. Definitions (types)
-   serve the clauses: declare one when a clause needs to name a party, an
-   amount or a deadline, never as an opening ceremony.
+1. **There are more parties than you first think.** Explicit parties are
+   the actors everyone names: the user, the admin. Implicit parties are the
+   parts of the system that make or rely on promises: the frontend, the
+   cache, the database, the queue, each subsystem. List both kinds, each
+   with its duties (the promises it makes, e.g. "the cache is never more
+   than 60 seconds stale"), before any code. The list is scratch work: each
+   duty becomes a named constant, a clause and a precedent, then the list
+   is dropped. Each party is a module, `contract/<party>.py`, with at least
+   one clause that binds it. Types serve the clauses: declare one when a
+   clause needs to name a party, an amount or a deadline.
 2. **Every business rule has a name.** A rule that exists only as an inline
    `if` is an unwritten verbal agreement — unenforceable and disputed later.
    Rule values have names too (`RETURN_WINDOW_DAYS = 14`). A docstring does
