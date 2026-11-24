@@ -1,0 +1,12 @@
+name: "Feedback: Bug"
+description: Bug reported through the feedback tab.
+labels: [feedback, triage, bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+  - type: input
+    id: page
+    attributes:
+      label: Page
