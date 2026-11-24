@@ -1,0 +1,12 @@
+name: "Feedback: Improvement"
+description: Improvement reported through the feedback tab.
+labels: [feedback, triage, enhancement]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+  - type: input
+    id: page
+    attributes:
+      label: Page
